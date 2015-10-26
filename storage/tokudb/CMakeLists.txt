@@ -1,4 +1,4 @@
-# ft-index only supports x86-64 and cmake-2.8.9+
+# PerconaFT only supports x86-64 and cmake-2.8.9+
 IF(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" AND
     NOT CMAKE_VERSION VERSION_LESS "2.8.9")
 CHECK_CXX_SOURCE_COMPILES(
@@ -101,14 +101,14 @@ endmacro(append_cflags_if_supported)
 set_cflags_if_supported(-Wno-missing-field-initializers)
 append_cflags_if_supported(-Wno-vla)
 
-ADD_SUBDIRECTORY(ft-index)
+ADD_SUBDIRECTORY(PerconaFT)
 
-INCLUDE_DIRECTORIES(ft-index)
-INCLUDE_DIRECTORIES(ft-index/portability)
-INCLUDE_DIRECTORIES(ft-index/util)
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/ft-index)
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/ft-index/buildheader)
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/ft-index/portability)
+INCLUDE_DIRECTORIES(PerconaFT)
+INCLUDE_DIRECTORIES(PerconaFT/portability)
+INCLUDE_DIRECTORIES(PerconaFT/util)
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/PerconaFT)
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/PerconaFT/buildheader)
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/PerconaFT/portability)
 
 SET(TOKUDB_PLUGIN_DYNAMIC "ha_tokudb")
 SET(TOKUDB_SOURCES ha_tokudb.cc)

@@ -1,95 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
-
-#include <config.h>
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #include "ft/ft.h"
 #include "ft/ft-cachetable-wrappers.h"
@@ -104,60 +49,10 @@ PATENT RIGHTS GRANT:
 #include "util/status.h"
 #include "util/context.h"
 
-/* Status is intended for display to humans to help understand system behavior.
- * It does not need to be perfectly thread-safe.
- */
-static FT_FLUSHER_STATUS_S ft_flusher_status;
-
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(ft_flusher_status, k, c, t, "ft flusher: " l, inc)
-
-#define STATUS_VALUE(x) ft_flusher_status.status[x].value.num
-void toku_ft_flusher_status_init(void) {
-    // Note,                                                                     this function initializes the keyname,  type, and legend fields.
-    // Value fields are initialized to zero by compiler.
-    STATUS_INIT(FT_FLUSHER_CLEANER_TOTAL_NODES,                nullptr, UINT64, "total nodes potentially flushed by cleaner thread", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_H1_NODES,                   nullptr, UINT64, "height-one nodes flushed by cleaner thread", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_HGT1_NODES,                 nullptr, UINT64, "height-greater-than-one nodes flushed by cleaner thread", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_EMPTY_NODES,                nullptr, UINT64, "nodes cleaned which had empty buffers", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_NODES_DIRTIED,              nullptr, UINT64, "nodes dirtied by cleaner thread", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_MAX_BUFFER_SIZE,            nullptr, UINT64, "max bytes in a buffer flushed by cleaner thread", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_MIN_BUFFER_SIZE,            nullptr, UINT64, "min bytes in a buffer flushed by cleaner thread", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_TOTAL_BUFFER_SIZE,          nullptr, UINT64, "total bytes in buffers flushed by cleaner thread", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_MAX_BUFFER_WORKDONE,        nullptr, UINT64, "max workdone in a buffer flushed by cleaner thread", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_MIN_BUFFER_WORKDONE,        nullptr, UINT64, "min workdone in a buffer flushed by cleaner thread", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_TOTAL_BUFFER_WORKDONE,      nullptr, UINT64, "total workdone in buffers flushed by cleaner thread", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_STARTED,    nullptr, UINT64, "times cleaner thread tries to merge a leaf", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_RUNNING,    nullptr, UINT64, "cleaner thread leaf merges in progress", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_COMPLETED,  nullptr, UINT64, "cleaner thread leaf merges successful", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_CLEANER_NUM_DIRTIED_FOR_LEAF_MERGE, nullptr, UINT64, "nodes dirtied by cleaner thread leaf merges", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_FLUSH_TOTAL,                        nullptr, UINT64, "total number of flushes done by flusher threads or cleaner threads", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_FLUSH_IN_MEMORY,                    nullptr, UINT64, "number of in memory flushes", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_FLUSH_NEEDED_IO,                    nullptr, UINT64, "number of flushes that read something off disk", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_FLUSH_CASCADES,                     nullptr, UINT64, "number of flushes that triggered another flush in child", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_FLUSH_CASCADES_1,                   nullptr, UINT64, "number of flushes that triggered 1 cascading flush", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_FLUSH_CASCADES_2,                   nullptr, UINT64, "number of flushes that triggered 2 cascading flushes", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_FLUSH_CASCADES_3,                   nullptr, UINT64, "number of flushes that triggered 3 cascading flushes", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_FLUSH_CASCADES_4,                   nullptr, UINT64, "number of flushes that triggered 4 cascading flushes", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_FLUSH_CASCADES_5,                   nullptr, UINT64, "number of flushes that triggered 5 cascading flushes", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_FLUSH_CASCADES_GT_5,                nullptr, UINT64, "number of flushes that triggered over 5 cascading flushes", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_SPLIT_LEAF,                         nullptr, UINT64, "leaf node splits", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_SPLIT_NONLEAF,                      nullptr, UINT64, "nonleaf node splits", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_MERGE_LEAF,                         nullptr, UINT64, "leaf node merges", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_MERGE_NONLEAF,                      nullptr, UINT64, "nonleaf node merges", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_FLUSHER_BALANCE_LEAF,                       nullptr, UINT64, "leaf node balances", TOKU_ENGINE_STATUS);
-
-    STATUS_VALUE(FT_FLUSHER_CLEANER_MIN_BUFFER_SIZE) = UINT64_MAX;
-    STATUS_VALUE(FT_FLUSHER_CLEANER_MIN_BUFFER_WORKDONE) = UINT64_MAX;
-
-    ft_flusher_status.initialized = true;
-}
-#undef STATUS_INIT
 
 void toku_ft_flusher_get_status(FT_FLUSHER_STATUS status) {
-    if (!ft_flusher_status.initialized) {
-        toku_ft_flusher_status_init();
-    }
-    *status = ft_flusher_status;
+    fl_status.init();
+    *status = fl_status;
 }
 
 //
@@ -204,22 +99,22 @@ find_heaviest_child(FTNODE node)
 
 static void
 update_flush_status(FTNODE child, int cascades) {
-    STATUS_VALUE(FT_FLUSHER_FLUSH_TOTAL)++;
+    FL_STATUS_VAL(FT_FLUSHER_FLUSH_TOTAL)++;
     if (cascades > 0) {
-        STATUS_VALUE(FT_FLUSHER_FLUSH_CASCADES)++;
+        FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES)++;
         switch (cascades) {
         case 1:
-            STATUS_VALUE(FT_FLUSHER_FLUSH_CASCADES_1)++; break;
+            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_1)++; break;
         case 2:
-            STATUS_VALUE(FT_FLUSHER_FLUSH_CASCADES_2)++; break;
+            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_2)++; break;
         case 3:
-            STATUS_VALUE(FT_FLUSHER_FLUSH_CASCADES_3)++; break;
+            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_3)++; break;
         case 4:
-            STATUS_VALUE(FT_FLUSHER_FLUSH_CASCADES_4)++; break;
+            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_4)++; break;
         case 5:
-            STATUS_VALUE(FT_FLUSHER_FLUSH_CASCADES_5)++; break;
+            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_5)++; break;
         default:
-            STATUS_VALUE(FT_FLUSHER_FLUSH_CASCADES_GT_5)++; break;
+            FL_STATUS_VAL(FT_FLUSHER_FLUSH_CASCADES_GT_5)++; break;
         }
     }
     bool flush_needs_io = false;
@@ -229,9 +124,9 @@ update_flush_status(FTNODE child, int cascades) {
         }
     }
     if (flush_needs_io) {
-        STATUS_VALUE(FT_FLUSHER_FLUSH_NEEDED_IO)++;
+        FL_STATUS_VAL(FT_FLUSHER_FLUSH_NEEDED_IO)++;
     } else {
-        STATUS_VALUE(FT_FLUSHER_FLUSH_IN_MEMORY)++;
+        FL_STATUS_VAL(FT_FLUSHER_FLUSH_IN_MEMORY)++;
     }
 }
 
@@ -419,7 +314,7 @@ ctm_update_status(
     void* UU(extra)
     )
 {
-    STATUS_VALUE(FT_FLUSHER_CLEANER_NUM_DIRTIED_FOR_LEAF_MERGE) += dirtied;
+    FL_STATUS_VAL(FT_FLUSHER_CLEANER_NUM_DIRTIED_FOR_LEAF_MERGE) += dirtied;
 }
 
 static void
@@ -431,7 +326,7 @@ ctm_maybe_merge_child(struct flusher_advice *fa,
                       void *extra)
 {
     if (child->height == 0) {
-        (void) toku_sync_fetch_and_add(&STATUS_VALUE(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_COMPLETED), 1);
+        (void) toku_sync_fetch_and_add(&FL_STATUS_VAL(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_COMPLETED), 1);
     }
     default_merge_child(fa, ft, parent, childnum, child, extra);
 }
@@ -495,12 +390,12 @@ ct_maybe_merge_child(struct flusher_advice *fa,
             toku_ftnode_assert_fully_in_memory(root_node);
         }
 
-        (void) toku_sync_fetch_and_add(&STATUS_VALUE(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_STARTED), 1);
-        (void) toku_sync_fetch_and_add(&STATUS_VALUE(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_RUNNING), 1);
+        (void) toku_sync_fetch_and_add(&FL_STATUS_VAL(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_STARTED), 1);
+        (void) toku_sync_fetch_and_add(&FL_STATUS_VAL(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_RUNNING), 1);
 
         toku_ft_flush_some_child(ft, root_node, &new_fa);
 
-        (void) toku_sync_fetch_and_sub(&STATUS_VALUE(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_RUNNING), 1);
+        (void) toku_sync_fetch_and_sub(&FL_STATUS_VAL(FT_FLUSHER_CLEANER_NUM_LEAF_MERGES_RUNNING), 1);
 
         toku_destroy_dbt(&ctme.target_key);
     }
@@ -513,7 +408,7 @@ ct_update_status(FTNODE child,
 {
     struct flush_status_update_extra* fste = (struct flush_status_update_extra *) extra;
     update_flush_status(child, fste->cascades);
-    STATUS_VALUE(FT_FLUSHER_CLEANER_NODES_DIRTIED) += dirtied;
+    FL_STATUS_VAL(FT_FLUSHER_CLEANER_NODES_DIRTIED) += dirtied;
     // Incrementing this in case `toku_ft_flush_some_child` decides to recurse.
     fste->cascades++;
 }
@@ -602,7 +497,7 @@ handle_split_of_child(
     // We never set the rightmost blocknum to be the root.
     // Instead, we wait for the root to split and let promotion initialize the rightmost
     // blocknum to be the first non-root leaf node on the right extreme to recieve an insert.
-    BLOCKNUM rightmost_blocknum = toku_drd_unsafe_fetch(&ft->rightmost_blocknum);
+    BLOCKNUM rightmost_blocknum = toku_unsafe_fetch(&ft->rightmost_blocknum);
     invariant(ft->h->root_blocknum.b != rightmost_blocknum.b);
     if (childa->blocknum.b == rightmost_blocknum.b) {
         // The rightmost leaf (a) split into (a) and (b). We want (b) to swap pair values
@@ -790,7 +685,7 @@ ftleaf_split(
 {
 
     paranoid_invariant(node->height == 0);
-    STATUS_VALUE(FT_FLUSHER_SPLIT_LEAF)++;
+    FL_STATUS_VAL(FT_FLUSHER_SPLIT_LEAF)++;
     if (node->n_children) {
         // First move all the accumulated stat64info deltas into the first basement.
         // After the split, either both nodes or neither node will be included in the next checkpoint.
@@ -967,7 +862,7 @@ ft_nonleaf_split(
     FTNODE* dependent_nodes)
 {
     //VERIFY_NODE(t,node);
-    STATUS_VALUE(FT_FLUSHER_SPLIT_NONLEAF)++;
+    FL_STATUS_VAL(FT_FLUSHER_SPLIT_NONLEAF)++;
     toku_ftnode_assert_fully_in_memory(node);
     int old_n_children = node->n_children;
     int n_children_in_a = old_n_children/2;
@@ -1123,7 +1018,7 @@ flush_this_child(
 static void
 merge_leaf_nodes(FTNODE a, FTNODE b)
 {
-    STATUS_VALUE(FT_FLUSHER_MERGE_LEAF)++;
+    FL_STATUS_VAL(FT_FLUSHER_MERGE_LEAF)++;
     toku_ftnode_assert_fully_in_memory(a);
     toku_ftnode_assert_fully_in_memory(b);
     paranoid_invariant(a->height == 0);
@@ -1199,7 +1094,7 @@ static void balance_leaf_nodes(
 //  If b is bigger then move stuff from b to a until b is the smaller.
 //  If a is bigger then move stuff from a to b until a is the smaller.
 {
-    STATUS_VALUE(FT_FLUSHER_BALANCE_LEAF)++;
+    FL_STATUS_VAL(FT_FLUSHER_BALANCE_LEAF)++;
     // first merge all the data into a
     merge_leaf_nodes(a,b);
     // now split them
@@ -1278,7 +1173,7 @@ maybe_merge_pinned_nonleaf_nodes(
     *did_rebalance = false;
     toku_init_dbt(splitk);
 
-    STATUS_VALUE(FT_FLUSHER_MERGE_NONLEAF)++;
+    FL_STATUS_VAL(FT_FLUSHER_MERGE_NONLEAF)++;
 }
 
 static void
@@ -1431,7 +1326,7 @@ ft_merge_child(
             node->pivotkeys.delete_at(childnuma);
 
             // Handle a merge of the rightmost leaf node.
-            BLOCKNUM rightmost_blocknum = toku_drd_unsafe_fetch(&ft->rightmost_blocknum); 
+            BLOCKNUM rightmost_blocknum = toku_unsafe_fetch(&ft->rightmost_blocknum);
             if (did_merge && childb->blocknum.b == rightmost_blocknum.b) {
                 invariant(childb->blocknum.b != ft->h->root_blocknum.b);
                 toku_ftnode_swap_pair_values(childa, childb);
@@ -1730,33 +1625,33 @@ update_cleaner_status(
     FTNODE node,
     int childnum)
 {
-    STATUS_VALUE(FT_FLUSHER_CLEANER_TOTAL_NODES)++;
+    FL_STATUS_VAL(FT_FLUSHER_CLEANER_TOTAL_NODES)++;
     if (node->height == 1) {
-        STATUS_VALUE(FT_FLUSHER_CLEANER_H1_NODES)++;
+        FL_STATUS_VAL(FT_FLUSHER_CLEANER_H1_NODES)++;
     } else {
-        STATUS_VALUE(FT_FLUSHER_CLEANER_HGT1_NODES)++;
+        FL_STATUS_VAL(FT_FLUSHER_CLEANER_HGT1_NODES)++;
     }
 
     unsigned int nbytesinbuf = toku_bnc_nbytesinbuf(BNC(node, childnum));
     if (nbytesinbuf == 0) {
-        STATUS_VALUE(FT_FLUSHER_CLEANER_EMPTY_NODES)++;
+        FL_STATUS_VAL(FT_FLUSHER_CLEANER_EMPTY_NODES)++;
     } else {
-        if (nbytesinbuf > STATUS_VALUE(FT_FLUSHER_CLEANER_MAX_BUFFER_SIZE)) {
-            STATUS_VALUE(FT_FLUSHER_CLEANER_MAX_BUFFER_SIZE) = nbytesinbuf;
+        if (nbytesinbuf > FL_STATUS_VAL(FT_FLUSHER_CLEANER_MAX_BUFFER_SIZE)) {
+            FL_STATUS_VAL(FT_FLUSHER_CLEANER_MAX_BUFFER_SIZE) = nbytesinbuf;
         }
-        if (nbytesinbuf < STATUS_VALUE(FT_FLUSHER_CLEANER_MIN_BUFFER_SIZE)) {
-            STATUS_VALUE(FT_FLUSHER_CLEANER_MIN_BUFFER_SIZE) = nbytesinbuf;
+        if (nbytesinbuf < FL_STATUS_VAL(FT_FLUSHER_CLEANER_MIN_BUFFER_SIZE)) {
+            FL_STATUS_VAL(FT_FLUSHER_CLEANER_MIN_BUFFER_SIZE) = nbytesinbuf;
         }
-        STATUS_VALUE(FT_FLUSHER_CLEANER_TOTAL_BUFFER_SIZE) += nbytesinbuf;
+        FL_STATUS_VAL(FT_FLUSHER_CLEANER_TOTAL_BUFFER_SIZE) += nbytesinbuf;
 
         uint64_t workdone = BP_WORKDONE(node, childnum);
-        if (workdone > STATUS_VALUE(FT_FLUSHER_CLEANER_MAX_BUFFER_WORKDONE)) {
-            STATUS_VALUE(FT_FLUSHER_CLEANER_MAX_BUFFER_WORKDONE) = workdone;
+        if (workdone > FL_STATUS_VAL(FT_FLUSHER_CLEANER_MAX_BUFFER_WORKDONE)) {
+            FL_STATUS_VAL(FT_FLUSHER_CLEANER_MAX_BUFFER_WORKDONE) = workdone;
         }
-        if (workdone < STATUS_VALUE(FT_FLUSHER_CLEANER_MIN_BUFFER_WORKDONE)) {
-            STATUS_VALUE(FT_FLUSHER_CLEANER_MIN_BUFFER_WORKDONE) = workdone;
+        if (workdone < FL_STATUS_VAL(FT_FLUSHER_CLEANER_MIN_BUFFER_WORKDONE)) {
+            FL_STATUS_VAL(FT_FLUSHER_CLEANER_MIN_BUFFER_WORKDONE) = workdone;
         }
-        STATUS_VALUE(FT_FLUSHER_CLEANER_TOTAL_BUFFER_WORKDONE) += workdone;
+        FL_STATUS_VAL(FT_FLUSHER_CLEANER_TOTAL_BUFFER_WORKDONE) += workdone;
     }
 }
 
@@ -2027,7 +1922,5 @@ void toku_ft_flush_node_on_background_thread(FT ft, FTNODE parent)
 void __attribute__((__constructor__)) toku_ft_flusher_helgrind_ignore(void);
 void
 toku_ft_flusher_helgrind_ignore(void) {
-    TOKU_VALGRIND_HG_DISABLE_CHECKING(&ft_flusher_status, sizeof ft_flusher_status);
+    TOKU_VALGRIND_HG_DISABLE_CHECKING(&fl_status, sizeof fl_status);
 }
-
-#undef STATUS_VALUE

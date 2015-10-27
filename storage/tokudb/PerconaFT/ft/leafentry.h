@@ -1,96 +1,42 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
-
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #pragma once
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include <toku_portability.h>
 
@@ -123,6 +69,12 @@ PATENT RIGHTS GRANT:
         key[]
         val[]
 */
+
+enum cursor_read_type {
+    C_READ_ANY = 0,
+    C_READ_SNAPSHOT = 1,
+    C_READ_COMMITTED = 2
+};
 
 //
 // enum of possible values for LEAFENTRY->type field
@@ -211,7 +163,7 @@ void wbuf_nocrc_LEAFENTRY(struct wbuf *w, LEAFENTRY le);
 int print_klpair (FILE *outf, const void* key, uint32_t keylen, LEAFENTRY v); // Print a leafentry out in human-readable form.
 
 int le_latest_is_del(LEAFENTRY le); // Return true if it is a provisional delete.
-int le_val_is_del(LEAFENTRY le, bool is_snapshot_read, TOKUTXN txn); // Returns true if the value that is to be read is empty
+int le_val_is_del(LEAFENTRY le, enum cursor_read_type read_type, TOKUTXN txn); // Returns true if the value that is to be read is empty
 bool le_is_clean(LEAFENTRY le); //Return how many xids exist (0 does not count)
 bool le_has_xids(LEAFENTRY le, XIDS xids); // Return true transaction represented by xids is still provisional in this leafentry (le's xid stack is a superset or equal to xids)
 void*     le_latest_val (LEAFENTRY le); // Return the latest val (return NULL for provisional deletes)
@@ -226,13 +178,13 @@ uint64_t le_outermost_uncommitted_xid (LEAFENTRY le);
 //      0:  context ignores this entry, id.
 //      TOKUDB_ACCEPT: context accepts id
 //      r|r!=0&&r!=TOKUDB_ACCEPT:  Quit early, return r, because something unexpected went wrong (error case)
-typedef int(*LE_ITERATE_CALLBACK)(TXNID id, TOKUTXN context);
+typedef int(*LE_ITERATE_CALLBACK)(TXNID id, TOKUTXN context, bool is_provisional);
 
 int le_iterate_val(LEAFENTRY le, LE_ITERATE_CALLBACK f, void** valpp, uint32_t *vallenp, TOKUTXN context);
 
 void le_extract_val(LEAFENTRY le,
                     // should we return the entire leafentry as the val?
-                    bool is_leaf_mode, bool is_snapshot_read,
+                    bool is_leaf_mode, enum cursor_read_type read_type,
                     TOKUTXN ttxn, uint32_t *vallen, void **val);
 
 size_t

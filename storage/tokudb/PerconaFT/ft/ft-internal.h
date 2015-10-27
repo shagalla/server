@@ -1,96 +1,42 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
-
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #pragma once
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include "portability/toku_config.h"
 #include "portability/toku_list.h"
@@ -103,6 +49,7 @@ PATENT RIGHTS GRANT:
 #include "ft/node.h"
 #include "ft/serialize/block_table.h"
 #include "ft/txn/rollback.h"
+#include "ft/ft-status.h"
 
 // Symbol TOKUDB_REVISION is not defined by fractal-tree makefiles, so
 // BUILD_ID of 1000 indicates development build of main, not a release build.  
@@ -486,144 +433,7 @@ typedef struct {
 
 void toku_ft_upgrade_get_status(FT_UPGRADE_STATUS);
 
-typedef enum {
-    LE_MAX_COMMITTED_XR = 0,
-    LE_MAX_PROVISIONAL_XR,
-    LE_EXPANDED,
-    LE_MAX_MEMSIZE,
-    LE_APPLY_GC_BYTES_IN,
-    LE_APPLY_GC_BYTES_OUT,
-    LE_NORMAL_GC_BYTES_IN,
-    LE_NORMAL_GC_BYTES_OUT,
-    LE_STATUS_NUM_ROWS
-} le_status_entry;
-
-typedef struct {
-    bool initialized;
-    TOKU_ENGINE_STATUS_ROW_S status[LE_STATUS_NUM_ROWS];
-} LE_STATUS_S, *LE_STATUS;
-
 void toku_le_get_status(LE_STATUS);
-
-typedef enum {
-    FT_UPDATES = 0,
-    FT_UPDATES_BROADCAST,
-    FT_DESCRIPTOR_SET,
-    FT_MSN_DISCARDS,                           // how many messages were ignored by leaf because of msn
-    FT_TOTAL_RETRIES,                          // total number of search retries due to TRY_AGAIN
-    FT_SEARCH_TRIES_GT_HEIGHT,                 // number of searches that required more tries than the height of the tree
-    FT_SEARCH_TRIES_GT_HEIGHTPLUS3,            // number of searches that required more tries than the height of the tree plus three
-    FT_DISK_FLUSH_LEAF,                        // number of leaf nodes flushed to disk,    not for checkpoint
-    FT_DISK_FLUSH_LEAF_BYTES,                  // number of leaf nodes flushed to disk,    not for checkpoint
-    FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES,                  // number of leaf nodes flushed to disk,    not for checkpoint
-    FT_DISK_FLUSH_LEAF_TOKUTIME,               // number of leaf nodes flushed to disk,    not for checkpoint
-    FT_DISK_FLUSH_NONLEAF,                     // number of nonleaf nodes flushed to disk, not for checkpoint
-    FT_DISK_FLUSH_NONLEAF_BYTES,               // number of nonleaf nodes flushed to disk, not for checkpoint
-    FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES,               // number of nonleaf nodes flushed to disk, not for checkpoint
-    FT_DISK_FLUSH_NONLEAF_TOKUTIME,            // number of nonleaf nodes flushed to disk, not for checkpoint
-    FT_DISK_FLUSH_LEAF_FOR_CHECKPOINT,         // number of leaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_LEAF_BYTES_FOR_CHECKPOINT,   // number of leaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT,// number of leaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_LEAF_TOKUTIME_FOR_CHECKPOINT,// number of leaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_NONLEAF_FOR_CHECKPOINT,      // number of nonleaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_NONLEAF_BYTES_FOR_CHECKPOINT,// number of nonleaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT,// number of nonleaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_NONLEAF_TOKUTIME_FOR_CHECKPOINT,// number of nonleaf nodes flushed to disk for checkpoint
-    FT_DISK_FLUSH_LEAF_COMPRESSION_RATIO,      // effective compression ratio for leaf bytes flushed to disk
-    FT_DISK_FLUSH_NONLEAF_COMPRESSION_RATIO,   // effective compression ratio for nonleaf bytes flushed to disk
-    FT_DISK_FLUSH_OVERALL_COMPRESSION_RATIO,   // effective compression ratio for all bytes flushed to disk
-    FT_PARTIAL_EVICTIONS_NONLEAF,              // number of nonleaf node partial evictions
-    FT_PARTIAL_EVICTIONS_NONLEAF_BYTES,        // number of nonleaf node partial evictions
-    FT_PARTIAL_EVICTIONS_LEAF,                 // number of leaf node partial evictions
-    FT_PARTIAL_EVICTIONS_LEAF_BYTES,           // number of leaf node partial evictions
-    FT_FULL_EVICTIONS_LEAF,                    // number of full cachetable evictions on leaf nodes
-    FT_FULL_EVICTIONS_LEAF_BYTES,              // number of full cachetable evictions on leaf nodes (bytes)
-    FT_FULL_EVICTIONS_NONLEAF,                 // number of full cachetable evictions on nonleaf nodes
-    FT_FULL_EVICTIONS_NONLEAF_BYTES,           // number of full cachetable evictions on nonleaf nodes (bytes)
-    FT_CREATE_LEAF,                            // number of leaf nodes created
-    FT_CREATE_NONLEAF,                         // number of nonleaf nodes created
-    FT_DESTROY_LEAF,                           // number of leaf nodes destroyed
-    FT_DESTROY_NONLEAF,                        // number of nonleaf nodes destroyed
-    FT_MSG_BYTES_IN,                           // how many bytes of messages injected at root (for all trees)
-    FT_MSG_BYTES_OUT,                          // how many bytes of messages flushed from h1 nodes to leaves
-    FT_MSG_BYTES_CURR,                         // how many bytes of messages currently in trees (estimate)
-    FT_MSG_NUM,                                // how many messages injected at root
-    FT_MSG_NUM_BROADCAST,                      // how many broadcast messages injected at root
-    FT_NUM_BASEMENTS_DECOMPRESSED_NORMAL,      // how many basement nodes were decompressed because they were the target of a query
-    FT_NUM_BASEMENTS_DECOMPRESSED_AGGRESSIVE,  // ... because they were between lc and rc
-    FT_NUM_BASEMENTS_DECOMPRESSED_PREFETCH,
-    FT_NUM_BASEMENTS_DECOMPRESSED_WRITE,
-    FT_NUM_MSG_BUFFER_DECOMPRESSED_NORMAL,     // how many msg buffers were decompressed because they were the target of a query
-    FT_NUM_MSG_BUFFER_DECOMPRESSED_AGGRESSIVE, // ... because they were between lc and rc
-    FT_NUM_MSG_BUFFER_DECOMPRESSED_PREFETCH,
-    FT_NUM_MSG_BUFFER_DECOMPRESSED_WRITE,
-    FT_NUM_PIVOTS_FETCHED_QUERY,               // how many pivots were fetched for a query
-    FT_BYTES_PIVOTS_FETCHED_QUERY,               // how many pivots were fetched for a query
-    FT_TOKUTIME_PIVOTS_FETCHED_QUERY,               // how many pivots were fetched for a query
-    FT_NUM_PIVOTS_FETCHED_PREFETCH,            // ... for a prefetch
-    FT_BYTES_PIVOTS_FETCHED_PREFETCH,            // ... for a prefetch
-    FT_TOKUTIME_PIVOTS_FETCHED_PREFETCH,            // ... for a prefetch
-    FT_NUM_PIVOTS_FETCHED_WRITE,               // ... for a write
-    FT_BYTES_PIVOTS_FETCHED_WRITE,               // ... for a write
-    FT_TOKUTIME_PIVOTS_FETCHED_WRITE,               // ... for a write
-    FT_NUM_BASEMENTS_FETCHED_NORMAL,           // how many basement nodes were fetched because they were the target of a query
-    FT_BYTES_BASEMENTS_FETCHED_NORMAL,           // how many basement nodes were fetched because they were the target of a query
-    FT_TOKUTIME_BASEMENTS_FETCHED_NORMAL,           // how many basement nodes were fetched because they were the target of a query
-    FT_NUM_BASEMENTS_FETCHED_AGGRESSIVE,       // ... because they were between lc and rc
-    FT_BYTES_BASEMENTS_FETCHED_AGGRESSIVE,       // ... because they were between lc and rc
-    FT_TOKUTIME_BASEMENTS_FETCHED_AGGRESSIVE,       // ... because they were between lc and rc
-    FT_NUM_BASEMENTS_FETCHED_PREFETCH,
-    FT_BYTES_BASEMENTS_FETCHED_PREFETCH,
-    FT_TOKUTIME_BASEMENTS_FETCHED_PREFETCH,
-    FT_NUM_BASEMENTS_FETCHED_WRITE,
-    FT_BYTES_BASEMENTS_FETCHED_WRITE,
-    FT_TOKUTIME_BASEMENTS_FETCHED_WRITE,
-    FT_NUM_MSG_BUFFER_FETCHED_NORMAL,          // how many msg buffers were fetched because they were the target of a query
-    FT_BYTES_MSG_BUFFER_FETCHED_NORMAL,          // how many msg buffers were fetched because they were the target of a query
-    FT_TOKUTIME_MSG_BUFFER_FETCHED_NORMAL,          // how many msg buffers were fetched because they were the target of a query
-    FT_NUM_MSG_BUFFER_FETCHED_AGGRESSIVE,      // ... because they were between lc and rc
-    FT_BYTES_MSG_BUFFER_FETCHED_AGGRESSIVE,      // ... because they were between lc and rc
-    FT_TOKUTIME_MSG_BUFFER_FETCHED_AGGRESSIVE,      // ... because they were between lc and rc
-    FT_NUM_MSG_BUFFER_FETCHED_PREFETCH,
-    FT_BYTES_MSG_BUFFER_FETCHED_PREFETCH,
-    FT_TOKUTIME_MSG_BUFFER_FETCHED_PREFETCH,
-    FT_NUM_MSG_BUFFER_FETCHED_WRITE,
-    FT_BYTES_MSG_BUFFER_FETCHED_WRITE,
-    FT_TOKUTIME_MSG_BUFFER_FETCHED_WRITE,
-    FT_LEAF_COMPRESS_TOKUTIME, // seconds spent compressing leaf leaf nodes to memory
-    FT_LEAF_SERIALIZE_TOKUTIME, // seconds spent serializing leaf node to memory
-    FT_LEAF_DECOMPRESS_TOKUTIME, // seconds spent decompressing leaf nodes to memory
-    FT_LEAF_DESERIALIZE_TOKUTIME, // seconds spent deserializing leaf nodes to memory
-    FT_NONLEAF_COMPRESS_TOKUTIME, // seconds spent compressing nonleaf nodes to memory
-    FT_NONLEAF_SERIALIZE_TOKUTIME, // seconds spent serializing nonleaf nodes to memory
-    FT_NONLEAF_DECOMPRESS_TOKUTIME, // seconds spent decompressing nonleaf nodes to memory
-    FT_NONLEAF_DESERIALIZE_TOKUTIME, // seconds spent deserializing nonleaf nodes to memory
-    FT_PRO_NUM_ROOT_SPLIT,
-    FT_PRO_NUM_ROOT_H0_INJECT,
-    FT_PRO_NUM_ROOT_H1_INJECT,
-    FT_PRO_NUM_INJECT_DEPTH_0,
-    FT_PRO_NUM_INJECT_DEPTH_1,
-    FT_PRO_NUM_INJECT_DEPTH_2,
-    FT_PRO_NUM_INJECT_DEPTH_3,
-    FT_PRO_NUM_INJECT_DEPTH_GT3,
-    FT_PRO_NUM_STOP_NONEMPTY_BUF,
-    FT_PRO_NUM_STOP_H1,
-    FT_PRO_NUM_STOP_LOCK_CHILD,
-    FT_PRO_NUM_STOP_CHILD_INMEM,
-    FT_PRO_NUM_DIDNT_WANT_PROMOTE,
-    FT_BASEMENT_DESERIALIZE_FIXED_KEYSIZE, // how many basement nodes were deserialized with a fixed keysize
-    FT_BASEMENT_DESERIALIZE_VARIABLE_KEYSIZE, // how many basement nodes were deserialized with a variable keysize
-    FT_PRO_RIGHTMOST_LEAF_SHORTCUT_SUCCESS,
-    FT_PRO_RIGHTMOST_LEAF_SHORTCUT_FAIL_POS,
-    FT_PRO_RIGHTMOST_LEAF_SHORTCUT_FAIL_REACTIVE,
-    FT_CURSOR_SKIP_DELETED_LEAF_ENTRY, // how many deleted leaf entries were skipped by a cursor
-    FT_STATUS_NUM_ROWS
-} ft_status_entry;
-
-typedef struct {
-    bool initialized;
-    TOKU_ENGINE_STATUS_ROW_S status[FT_STATUS_NUM_ROWS];
-} FT_STATUS_S, *FT_STATUS;
 
 void toku_ft_status_update_pivot_fetch_reason(ftnode_fetch_extra *bfe);
 void toku_ft_status_update_flush_reason(FTNODE node, uint64_t uncompressed_bytes_flushed, uint64_t bytes_written, tokutime_t write_time, bool for_checkpoint);

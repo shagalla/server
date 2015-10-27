@@ -1,5 +1,4 @@
 drop table if exists t1;
-FLUSH TABLES;
 CREATE TABLE t1 (a INT PRIMARY KEY) ENGINE=tokudb;
 xa begin 'a','ab';
 insert into t1 values (1);
@@ -8,8 +7,6 @@ a
 1
 xa end 'a','ab';
 SET SESSION debug="d,tokudb_crash_prepare_before";
-Warnings:
-Warning	1287	'@@debug' is deprecated and will be removed in a future release. Please use '@@debug_dbug' instead
 xa prepare 'a','ab';
 ERROR HY000: Lost connection to MySQL server during query
 xa commit'a','ab';
@@ -24,8 +21,6 @@ a
 1
 xa end 'a','ab';
 SET SESSION debug="d,tokudb_crash_prepare_after";
-Warnings:
-Warning	1287	'@@debug' is deprecated and will be removed in a future release. Please use '@@debug_dbug' instead
 xa prepare 'a','ab';
 ERROR HY000: Lost connection to MySQL server during query
 xa commit 'a','ab';
@@ -41,8 +36,6 @@ a
 1
 xa end 'a','ab';
 SET SESSION debug="d,tokudb_crash_prepare_after";
-Warnings:
-Warning	1287	'@@debug' is deprecated and will be removed in a future release. Please use '@@debug_dbug' instead
 xa prepare 'a','ab';
 ERROR HY000: Lost connection to MySQL server during query
 xa rollback 'a','ab';
@@ -57,8 +50,6 @@ a
 1
 xa end 'a','ab';
 SET SESSION debug="d,tokudb_crash_commit_before";
-Warnings:
-Warning	1287	'@@debug' is deprecated and will be removed in a future release. Please use '@@debug_dbug' instead
 xa prepare 'a','ab';
 xa commit 'a','ab';
 ERROR HY000: Lost connection to MySQL server during query
@@ -75,8 +66,6 @@ a
 1
 xa end 'a','ab';
 SET SESSION debug="d,tokudb_crash_commit_before";
-Warnings:
-Warning	1287	'@@debug' is deprecated and will be removed in a future release. Please use '@@debug_dbug' instead
 xa prepare 'a','ab';
 xa commit 'a','ab';
 ERROR HY000: Lost connection to MySQL server during query

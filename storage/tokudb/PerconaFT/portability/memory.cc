@@ -1,92 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #include <portability/toku_config.h>
 
@@ -202,25 +150,38 @@ set_max(uint64_t sum_used, uint64_t sum_freed) {
     }
 }
 
+// Effect: Like toku_memory_footprint, except instead of passing p,
+//   we pass toku_malloc_usable_size(p).
 size_t 
-toku_memory_footprint(void * p, size_t touched) {
-    size_t rval = 0;
+toku_memory_footprint_given_usable_size(size_t touched, size_t usable)
+{
     size_t pagesize = toku_os_get_pagesize();
-    if (p) {
-        size_t usable = my_malloc_usable_size(p);
-        if (usable >= status.mmap_threshold) {
-            int num_pages = (touched + pagesize) / pagesize;
-            rval = num_pages * pagesize;
-        }
-        else {
-            rval = usable;
-        }
+    if (usable >= status.mmap_threshold) {
+        int num_pages = (touched + pagesize) / pagesize;
+        return num_pages * pagesize;
     }
-    return rval;
+    return usable;
+}
+
+// Effect: Return an estimate how how much space an object is using, possibly by
+//   using toku_malloc_usable_size(p).
+//   If p is NULL then returns 0.
+size_t
+toku_memory_footprint(void * p, size_t touched)
+{
+    if (!p) return 0;
+    return toku_memory_footprint_given_usable_size(touched,
+                                                   my_malloc_usable_size(p));
 }
 
 void *
 toku_malloc(size_t size) {
+#if __APPLE__
+    if (size == 0) {
+        return nullptr;
+    }
+#endif
+
     if (size > status.max_requested_size) {
         status.max_requested_size = size;
     }
@@ -242,6 +203,12 @@ toku_malloc(size_t size) {
 }
 
 void *toku_malloc_aligned(size_t alignment, size_t size) {
+#if __APPLE__
+    if (size == 0) {
+        return nullptr;
+    }
+#endif
+
     if (size > status.max_requested_size) {
         status.max_requested_size = size;
     }
@@ -272,6 +239,15 @@ toku_calloc(size_t nmemb, size_t size) {
 
 void *
 toku_realloc(void *p, size_t size) {
+#if __APPLE__
+    if (size == 0) {
+        if (p != nullptr) {
+            toku_free(p);
+        }
+        return nullptr;
+    }
+#endif
+
     if (size > status.max_requested_size) {
         status.max_requested_size = size;
     }
@@ -294,6 +270,15 @@ toku_realloc(void *p, size_t size) {
 }
 
 void *toku_realloc_aligned(size_t alignment, void *p, size_t size) {
+#if __APPLE__
+    if (size == 0) {
+        if (p != nullptr) {
+            toku_free(p);
+        }
+        return nullptr;
+    }
+#endif
+
     if (size > status.max_requested_size) {
         status.max_requested_size = size;
     }
@@ -345,6 +330,12 @@ toku_free(void *p) {
 
 void *
 toku_xmalloc(size_t size) {
+#if __APPLE__
+    if (size == 0) {
+        return nullptr;
+    }
+#endif
+
     if (size > status.max_requested_size) {
         status.max_requested_size = size;
     }
@@ -369,11 +360,17 @@ void* toku_xmalloc_aligned(size_t alignment, size_t size)
 //  Fail with a resource_assert if the allocation fails (don't return an error code).
 // Requires: alignment is a power of two.
 {
+#if __APPLE__
+    if (size == 0) {
+        return nullptr;
+    }
+#endif
+
     if (size > status.max_requested_size) {
         status.max_requested_size = size;
     }
     void *p = t_xmalloc_aligned ? t_xmalloc_aligned(alignment, size) : os_malloc_aligned(alignment,size);
-    if (p == NULL) {
+    if (p == NULL && size != 0) {
         status.last_failed_size = size;
         resource_assert(p);
     }
@@ -397,6 +394,15 @@ toku_xcalloc(size_t nmemb, size_t size) {
 
 void *
 toku_xrealloc(void *v, size_t size) {
+#if __APPLE__
+    if (size == 0) {
+        if (v != nullptr) {
+            toku_free(v);
+        }
+        return nullptr;
+    }
+#endif
+
     if (size > status.max_requested_size) {
         status.max_requested_size = size;
     }

@@ -1,96 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
-
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
-
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
-
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
-
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
-
-COPYRIGHT NOTICE:
-
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
-
-DISCLAIMER:
-
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
-
-UNIVERSITY PATENT NOTICE:
-
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
+/*======
+This file is part of PerconaFT.
 
 
-#include <config.h>
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
+
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
+
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+
+----------------------------------------
+
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
+
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
+
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #include "ft/cachetable/checkpoint.h"
 #include "ft/ft.h"
@@ -101,41 +45,9 @@ PATENT RIGHTS GRANT:
 #include "ft/txn/txn_manager.h"
 #include "util/status.h"
 
-///////////////////////////////////////////////////////////////////////////////////
-// Engine status
-//
-// Status is intended for display to humans to help understand system behavior.
-// It does not need to be perfectly thread-safe.
-
-static TXN_STATUS_S txn_status;
-
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(txn_status, k, c, t, "txn: " l, inc)
-
-void
-txn_status_init(void) {
-    // Note, this function initializes the keyname, type, and legend fields.
-    // Value fields are initialized to zero by compiler.
-    STATUS_INIT(TXN_BEGIN,            TXN_BEGIN, PARCOUNT,   "begin", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(TXN_READ_BEGIN,       TXN_BEGIN_READ_ONLY, PARCOUNT,   "begin read only", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(TXN_COMMIT,           TXN_COMMITS, PARCOUNT,   "successful commits", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(TXN_ABORT,            TXN_ABORTS, PARCOUNT,   "aborts", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    txn_status.initialized = true;
-}
-
-void txn_status_destroy(void) {
-    for (int i = 0; i < TXN_STATUS_NUM_ROWS; ++i) {
-        if (txn_status.status[i].type == PARCOUNT) {
-            destroy_partitioned_counter(txn_status.status[i].value.parcount);
-        }
-    }
-}
-
-#undef STATUS_INIT
-
-#define STATUS_INC(x, d) increment_partitioned_counter(txn_status.status[x].value.parcount, d)
-
 void 
 toku_txn_get_status(TXN_STATUS s) {
+    txn_status.init();
     *s = txn_status;
 }
 
@@ -266,7 +178,7 @@ toku_txn_begin_with_xid (
         // this call will set txn->xids
         txn_create_xids(txn, parent);
     }
-    *txnp = txn;
+    toku_unsafe_set(txnp, txn);
 exit:
     return r;
 }
@@ -333,14 +245,14 @@ static txn_child_manager tcm;
         .do_fsync = false,
         .force_fsync_on_commit = false,
         .do_fsync_lsn = ZERO_LSN,
-        .xa_xid = {0},
+        .xa_xid = {0, 0, 0, ""},
         .progress_poll_fun = NULL,
         .progress_poll_fun_extra = NULL,
-        .txn_lock = ZERO_MUTEX_INITIALIZER,
+        .txn_lock = TOKU_MUTEX_INITIALIZER,
         .open_fts = open_fts,
         .roll_info = roll_info,
-        .state_lock = ZERO_MUTEX_INITIALIZER,
-        .state_cond = ZERO_COND_INITIALIZER,
+        .state_lock = TOKU_MUTEX_INITIALIZER,
+        .state_cond = TOKU_COND_INITIALIZER,
         .state = TOKUTXN_LIVE,
         .num_pin = 0,
         .client_id = 0,
@@ -371,10 +283,10 @@ static txn_child_manager tcm;
     *tokutxn = result;
 
     if (read_only) {
-        STATUS_INC(TXN_READ_BEGIN, 1);
+        TXN_STATUS_INC(TXN_READ_BEGIN, 1);
     }
     else {
-        STATUS_INC(TXN_BEGIN, 1);
+        TXN_STATUS_INC(TXN_BEGIN, 1);
     }
 }
 
@@ -483,7 +395,7 @@ int toku_txn_commit_with_lsn(TOKUTXN txn, int nosync, LSN oplsn,
     // since there were no writes.  Skipping it would mean we would need to be careful
     // in case we added any additional required cleanup into those functions in the future.
     int r = toku_rollback_commit(txn, oplsn);
-    STATUS_INC(TXN_COMMIT, 1);
+    TXN_STATUS_INC(TXN_COMMIT, 1);
     return r;
 }
 
@@ -547,7 +459,7 @@ int toku_txn_abort_with_lsn(TOKUTXN txn, LSN oplsn,
     // since there were no writes.  Skipping it would mean we would need to be careful
     // in case we added any additional required cleanup into those functions in the future.
     int r = toku_rollback_abort(txn, oplsn);
-    STATUS_INC(TXN_ABORT, 1);
+    TXN_STATUS_INC(TXN_ABORT, 1);
     return r;
 }
 
@@ -792,7 +704,7 @@ time_t toku_txn_get_start_time(struct tokutxn *txn) {
     return txn->start_time;
 }
 
-int toku_txn_reads_txnid(TXNID txnid, TOKUTXN txn) {
+int toku_txn_reads_txnid(TXNID txnid, TOKUTXN txn, bool is_provisional UU()) {
     int r = 0;
     TXNID oldest_live_in_snapshot = toku_get_oldest_in_live_root_txn_list(txn);
     if (oldest_live_in_snapshot == TXNID_NONE && txnid < txn->snapshot_txnid64) {
@@ -817,5 +729,3 @@ void __attribute__((__constructor__)) toku_txn_status_helgrind_ignore(void);
 void toku_txn_status_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&txn_status, sizeof txn_status);
 }
-
-#undef STATUS_VALUE

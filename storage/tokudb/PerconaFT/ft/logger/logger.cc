@@ -1,95 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
-
-#include <config.h>
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #include <memory.h>
 #include <ctype.h>
@@ -1395,46 +1340,19 @@ void toku_logger_note_checkpoint(TOKULOGGER logger, LSN lsn) {
     logger->last_completed_checkpoint_lsn = lsn;
 }
 
-///////////////////////////////////////////////////////////////////////////////////
-// Engine status
-//
-// Status is intended for display to humans to help understand system behavior.
-// It does not need to be perfectly thread-safe.
-
-static LOGGER_STATUS_S logger_status;
-
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(logger_status, k, c, t, "logger: " l, inc)
-
-static void
-status_init(void) {
-    // Note, this function initializes the keyname, type, and legend fields.
-    // Value fields are initialized to zero by compiler.
-    STATUS_INIT(LOGGER_NEXT_LSN,     nullptr, UINT64,  "next LSN", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LOGGER_NUM_WRITES,                  LOGGER_WRITES, UINT64, "writes", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LOGGER_BYTES_WRITTEN,               LOGGER_WRITES_BYTES, UINT64, "writes (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LOGGER_UNCOMPRESSED_BYTES_WRITTEN,  LOGGER_WRITES_UNCOMPRESSED_BYTES, UINT64, "writes (uncompressed bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LOGGER_TOKUTIME_WRITES,             LOGGER_WRITES_SECONDS, TOKUTIME, "writes (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(LOGGER_WAIT_BUF_LONG,               LOGGER_WAIT_LONG, UINT64, "number of long logger write operations", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    logger_status.initialized = true;
-}
-#undef STATUS_INIT
-
-#define STATUS_VALUE(x) logger_status.status[x].value.num
-
 void
 toku_logger_get_status(TOKULOGGER logger, LOGGER_STATUS statp) {
-    if (!logger_status.initialized)
-        status_init();
+    log_status.init();
     if (logger) {
-        STATUS_VALUE(LOGGER_NEXT_LSN)    = logger->lsn.lsn;
-        STATUS_VALUE(LOGGER_NUM_WRITES)  = logger->num_writes_to_disk;
-        STATUS_VALUE(LOGGER_BYTES_WRITTEN)  = logger->bytes_written_to_disk;
+        LOG_STATUS_VAL(LOGGER_NEXT_LSN)    = logger->lsn.lsn;
+        LOG_STATUS_VAL(LOGGER_NUM_WRITES)  = logger->num_writes_to_disk;
+        LOG_STATUS_VAL(LOGGER_BYTES_WRITTEN)  = logger->bytes_written_to_disk;
         // No compression on logfiles so the uncompressed size is just number of bytes written
-        STATUS_VALUE(LOGGER_UNCOMPRESSED_BYTES_WRITTEN)  = logger->bytes_written_to_disk;
-        STATUS_VALUE(LOGGER_TOKUTIME_WRITES) = logger->time_spent_writing_to_disk;
-        STATUS_VALUE(LOGGER_WAIT_BUF_LONG) = logger->num_wait_buf_long;
+        LOG_STATUS_VAL(LOGGER_UNCOMPRESSED_BYTES_WRITTEN)  = logger->bytes_written_to_disk;
+        LOG_STATUS_VAL(LOGGER_TOKUTIME_WRITES) = logger->time_spent_writing_to_disk;
+        LOG_STATUS_VAL(LOGGER_WAIT_BUF_LONG) = logger->num_wait_buf_long;
     }
-    *statp = logger_status;
+    *statp = log_status;
 }
 
 
@@ -1483,5 +1401,3 @@ toku_get_version_of_logs_on_disk(const char *log_dir, bool *found_any_logs, uint
 TXN_MANAGER toku_logger_get_txn_manager(TOKULOGGER logger) {
     return logger->txn_manager;
 }
-
-#undef STATUS_VALUE

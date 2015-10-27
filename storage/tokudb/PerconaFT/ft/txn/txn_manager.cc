@@ -1,95 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
-
-#include <config.h>
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #include "portability/toku_race_tools.h"
 
@@ -102,6 +47,21 @@ PATENT RIGHTS GRANT:
 #include "util/omt.h"
 
 bool garbage_collection_debug = false;
+
+static bool txn_records_snapshot(TXN_SNAPSHOT_TYPE snapshot_type, struct tokutxn *parent) {
+    if (snapshot_type == TXN_COPIES_SNAPSHOT) {
+        return false;
+    }
+    // we need a snapshot if the snapshot type is a child or
+    // if the snapshot type is root and we have no parent.
+    // Cases that we don't need a snapshot: when snapshot type is NONE
+    //  or when it is ROOT and we have a parent
+    return (snapshot_type != TXN_SNAPSHOT_NONE && (parent==NULL || snapshot_type == TXN_SNAPSHOT_CHILD));
+}
+
+static bool txn_copies_snapshot(TXN_SNAPSHOT_TYPE snapshot_type, struct tokutxn *parent) {
+    return (snapshot_type == TXN_COPIES_SNAPSHOT) || txn_records_snapshot(snapshot_type, parent);
+}
 
 // internal locking functions, should use this instead of accessing lock directly
 static void txn_manager_lock(TXN_MANAGER txn_manager);
@@ -327,7 +287,7 @@ toku_txn_manager_get_oldest_living_xid(TXN_MANAGER txn_manager) {
 }
 
 TXNID toku_txn_manager_get_oldest_referenced_xid_estimate(TXN_MANAGER txn_manager) {
-    return toku_drd_unsafe_fetch(&txn_manager->last_calculated_oldest_referenced_xid);
+    return toku_unsafe_fetch(&txn_manager->last_calculated_oldest_referenced_xid);
 }
 
 int live_root_txn_list_iter(const TOKUTXN &live_xid, const uint32_t UU(index), TXNID **const referenced_xids);
@@ -387,7 +347,7 @@ static void set_oldest_referenced_xid(TXN_MANAGER txn_manager) {
         oldest_referenced_xid = txn_manager->last_xid;
     }
     invariant(oldest_referenced_xid != TXNID_MAX);
-    toku_drd_unsafe_set(&txn_manager->last_calculated_oldest_referenced_xid, oldest_referenced_xid);
+    toku_unsafe_set(&txn_manager->last_calculated_oldest_referenced_xid, oldest_referenced_xid);
 }
 
 //Heaviside function to find a TOKUTXN by TOKUTXN (used to find the index)
@@ -407,7 +367,6 @@ static inline void txn_manager_create_snapshot_unlocked(
     ) 
 {    
     txn->snapshot_txnid64 = ++txn_manager->last_xid;    
-    setup_live_root_txn_list(&txn_manager->live_root_ids, txn->live_root_txn_list);  
     // Add this txn to the global list of txns that have their own snapshots.
     // (Note, if a txn is a child that creates its own snapshot, then that child xid
     // is the xid stored in the global list.) 
@@ -557,8 +516,11 @@ void toku_txn_manager_handle_snapshot_create_for_child_txn(
 {
     // this is a function for child txns, so just doint a sanity check
     invariant(txn->parent != NULL);
-    bool needs_snapshot = txn_needs_snapshot(snapshot_type, txn->parent);
-    if (needs_snapshot) {
+    bool copies_snapshot = txn_copies_snapshot(snapshot_type, txn->parent);
+    bool records_snapshot = txn_records_snapshot(snapshot_type, txn->parent);
+    // assert that if records_snapshot is true, then copies_snapshot is true
+    invariant(!records_snapshot || copies_snapshot);
+    if (records_snapshot) {
         invariant(txn->live_root_txn_list == nullptr);
         XMALLOC(txn->live_root_txn_list);
         txn_manager_lock(txn_manager);
@@ -567,6 +529,9 @@ void toku_txn_manager_handle_snapshot_create_for_child_txn(
     }
     else {
         inherit_snapshot_from_parent(txn);
+    }
+    if (copies_snapshot) {
+        setup_live_root_txn_list(&txn_manager->live_root_ids, txn->live_root_txn_list);  
     }
 }
 
@@ -578,11 +543,14 @@ void toku_txn_manager_handle_snapshot_destroy_for_child_txn(
 {
     // this is a function for child txns, so just doint a sanity check
     invariant(txn->parent != NULL);
-    bool is_snapshot = txn_needs_snapshot(snapshot_type, txn->parent);
-    if (is_snapshot) {
+    bool copies_snapshot = txn_copies_snapshot(snapshot_type, txn->parent);
+    bool records_snapshot = txn_records_snapshot(snapshot_type, txn->parent);
+    if (records_snapshot) {
         txn_manager_lock(txn_manager);
         txn_manager_remove_snapshot_unlocked(txn, txn_manager);
         txn_manager_unlock(txn_manager);
+    }
+    if (copies_snapshot) {
         invariant(txn->live_root_txn_list != nullptr);
         txn->live_root_txn_list->destroy();
         toku_free(txn->live_root_txn_list);
@@ -621,11 +589,14 @@ void toku_txn_manager_start_txn(
     int r;
     TXNID xid = TXNID_NONE;
     // if we are running in recovery, we don't need to make snapshots
-    bool needs_snapshot = txn_needs_snapshot(snapshot_type, NULL);
+    bool copies_snapshot = txn_copies_snapshot(snapshot_type, NULL);
+    bool records_snapshot = txn_records_snapshot(snapshot_type, NULL);
+    // assert that if records_snapshot is true, then copies_snapshot is true
+    invariant(!records_snapshot || copies_snapshot);
 
     // perform a malloc outside of the txn_manager lock
     // will be used in txn_manager_create_snapshot_unlocked below
-    if (needs_snapshot) {
+    if (copies_snapshot) {
         invariant(txn->live_root_txn_list == nullptr);
         XMALLOC(txn->live_root_txn_list);
     }
@@ -662,11 +633,14 @@ void toku_txn_manager_start_txn(
     }
     set_oldest_referenced_xid(txn_manager);
     
-    if (needs_snapshot) {
+    if (records_snapshot) {
         txn_manager_create_snapshot_unlocked(
             txn_manager,
             txn
             );
+    }
+    if (copies_snapshot) {
+        setup_live_root_txn_list(&txn_manager->live_root_ids, txn->live_root_txn_list);  
     }
 
     if (garbage_collection_debug) {
@@ -703,14 +677,14 @@ done:
 void toku_txn_manager_finish_txn(TXN_MANAGER txn_manager, TOKUTXN txn) {
     int r;
     invariant(txn->parent == NULL);
-    bool is_snapshot = txn_needs_snapshot(txn->snapshot_type, NULL);
+    bool records_snapshot = txn_records_snapshot(txn->snapshot_type, NULL);
     txn_manager_lock(txn_manager);
 
     if (garbage_collection_debug) {
         verify_snapshot_system(txn_manager);
     }
 
-    if (is_snapshot) {
+    if (records_snapshot) {
         txn_manager_remove_snapshot_unlocked(
             txn, 
             txn_manager
@@ -762,8 +736,7 @@ void toku_txn_manager_finish_txn(TXN_MANAGER txn_manager, TOKUTXN txn) {
     txn_manager_unlock(txn_manager);
 
     //Cleanup that does not require the txn_manager lock
-    if (is_snapshot) {
-        invariant(txn->live_root_txn_list != nullptr);
+    if (txn->live_root_txn_list) {
         txn->live_root_txn_list->destroy();
         toku_free(txn->live_root_txn_list);
     }

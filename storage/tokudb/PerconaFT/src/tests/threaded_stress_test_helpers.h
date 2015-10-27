@@ -1,95 +1,42 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
+#ident "$Id$"
+/*======
+This file is part of PerconaFT.
 
-/*
-COPYING CONDITIONS NOTICE:
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-COPYRIGHT NOTICE:
+----------------------------------------
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-DISCLAIMER:
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-UNIVERSITY PATENT NOTICE:
-
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #pragma once
-
-#ident "Copyright (c) 2009-2013 Tokutek Inc.  All rights reserved."
-#ident "$Id$"
 
 // The Way Things Work:
 //
@@ -147,6 +94,7 @@ enum stress_lock_type {
 };
 
 struct env_args {
+    int fanout;
     int node_size;
     int basement_node_size;
     int rollback_node_size;
@@ -1945,6 +1893,7 @@ static void open_db_for_create(DB *db, int idx, struct cli_args *cli_args) {
     memset(name, 0, sizeof(name));
     get_ith_table_name(name, sizeof(name), idx);
     r = db->set_flags(db, 0); CKERR(r);
+    r = db->set_fanout(db, cli_args->env_args.fanout); CKERR(r);
     r = db->set_pagesize(db, cli_args->env_args.node_size); CKERR(r);
     r = db->set_readpagesize(db, cli_args->env_args.basement_node_size); CKERR(r);
     r = db->set_compression_method(db, cli_args->compression_method); CKERR(r);
@@ -1959,6 +1908,7 @@ static void open_db(DB *db, int idx, struct cli_args *cli_args) {
     get_ith_table_name(name, sizeof(name), idx);
     const int flags = DB_CREATE | (cli_args->blackhole ? DB_BLACKHOLE : 0);
     r = db->open(db, null_txn, name, nullptr, DB_BTREE, flags, 0666); CKERR(r);
+    r = db->change_fanout(db, cli_args->env_args.fanout); CKERR(r); // change fanout until fanout is persistent
 }
 
 static int create_tables(DB_ENV **env_res, DB **db_res, int num_DBs,
@@ -2225,6 +2175,7 @@ static int close_tables(DB_ENV *env, DB**  dbs, int num_DBs) {
 }
 
 static const struct env_args DEFAULT_ENV_ARGS = {
+    .fanout = 16,
     .node_size = 4096,
     .basement_node_size = 1024,
     .rollback_node_size = 4096,
@@ -2242,6 +2193,7 @@ static const struct env_args DEFAULT_ENV_ARGS = {
 };
 
 static const struct env_args DEFAULT_PERF_ENV_ARGS = {
+    .fanout = 16,
     .node_size = 4*1024*1024,
     .basement_node_size = 128*1024,
     .rollback_node_size = 4*1024*1024,
@@ -2638,6 +2590,7 @@ static inline void parse_stress_test_args (int argc, char *const argv[], struct 
         INT32_ARG_NONNEG("--num_elements",            num_elements,                  ""),
         INT32_ARG_NONNEG("--num_DBs",                 num_DBs,                       ""),
         INT32_ARG_NONNEG("--num_seconds",             num_seconds,                   "s"),
+        INT32_ARG_NONNEG("--fanout",                  env_args.fanout,               ""),
         INT32_ARG_NONNEG("--node_size",               env_args.node_size,            " bytes"),
         INT32_ARG_NONNEG("--basement_node_size",      env_args.basement_node_size,   " bytes"),
         INT32_ARG_NONNEG("--rollback_node_size",      env_args.rollback_node_size,   " bytes"),
@@ -2755,10 +2708,12 @@ static inline void parse_stress_test_args (int argc, char *const argv[], struct 
             args->compression_method = TOKU_ZLIB_WITHOUT_CHECKSUM_METHOD;
         } else if (strcmp(compression_method_s, "lzma") == 0) {
             args->compression_method = TOKU_LZMA_METHOD;
+        } else if (strcmp(compression_method_s, "snappy") == 0) {
+            args->compression_method = TOKU_SNAPPY_METHOD;
         } else if (strcmp(compression_method_s, "none") == 0) {
             args->compression_method = TOKU_NO_COMPRESSION;
         } else {
-            fprintf(stderr, "valid values for --compression_method are \"quicklz\", \"zlib\", \"lzma\" and \"none\"\n");
+            fprintf(stderr, "valid values for --compression_method are \"quicklz\", \"zlib\", \"lzma\", \"snappy\", and \"none\"\n");
             do_usage(argv0, num_arg_types, arg_types);
             exit(EINVAL);
         }
@@ -2890,7 +2845,7 @@ open_and_stress_tables(struct cli_args *args, bool fill_with_zeroes, int (*cmp)(
         return;
     }
 
-    { char *loc = setlocale(LC_NUMERIC, "en_US.UTF-8"); assert(loc); }
+    setlocale(LC_NUMERIC, "en_US.UTF-8");
     DB_ENV* env = nullptr;
     DB* dbs[args->num_DBs];
     memset(dbs, 0, sizeof(dbs));

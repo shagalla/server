@@ -179,6 +179,7 @@ storage/tokudb/PerconaFT/ft/tokuftdump
 storage/tokudb/PerconaFT/portability/merge_archives_tokuportability_static.cmake
 storage/tokudb/PerconaFT/portability/toku_config.h
 storage/tokudb/PerconaFT/portability/tokuportability_static_depends.cc
+storage/tokudb/PerconaFT/snappy/
 storage/tokudb/PerconaFT/src/merge_archives_tokufractaltree_static.cmake
 storage/tokudb/PerconaFT/src/tokufractaltree_static_depends.cc
 storage/tokudb/PerconaFT/toku_include/toku_config.h

@@ -1,101 +1,48 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
-
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #pragma once
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
 
 #include "portability/toku_stdint.h"
 
 #include "ft/txn/txn_state.h"
 #include "ft/serialize/block_table.h"
+#include "ft/ft-status.h"
 #include "util/omt.h"
 
 typedef uint64_t TXNID;
@@ -135,7 +82,8 @@ static const LSN MAX_LSN = { .lsn = UINT64_MAX };
 typedef enum __TXN_SNAPSHOT_TYPE { 
     TXN_SNAPSHOT_NONE=0,
     TXN_SNAPSHOT_ROOT=1,
-    TXN_SNAPSHOT_CHILD=2
+    TXN_SNAPSHOT_CHILD=2,
+    TXN_COPIES_SNAPSHOT=3
 } TXN_SNAPSHOT_TYPE;
 
 typedef toku::omt<struct tokutxn *> txn_omt_t;
@@ -144,14 +92,6 @@ typedef toku::omt<struct referenced_xid_tuple, struct referenced_xid_tuple *> rx
 
 inline bool txn_pair_is_none(TXNID_PAIR txnid) {
     return txnid.parent_id64 == TXNID_NONE && txnid.child_id64 == TXNID_NONE;
-}
-
-inline bool txn_needs_snapshot(TXN_SNAPSHOT_TYPE snapshot_type, struct tokutxn *parent) {
-    // we need a snapshot if the snapshot type is a child or
-    // if the snapshot type is root and we have no parent.
-    // Cases that we don't need a snapshot: when snapshot type is NONE
-    //  or when it is ROOT and we have a parent
-    return (snapshot_type != TXN_SNAPSHOT_NONE && (parent==NULL || snapshot_type == TXN_SNAPSHOT_CHILD));
 }
 
 struct tokulogger;
@@ -327,19 +267,6 @@ struct XIDS_S *toku_txn_get_xids(struct tokutxn *txn);
 // Force fsync on commit
 void toku_txn_force_fsync_on_commit(struct tokutxn *txn);
 
-typedef enum {
-    TXN_BEGIN,             // total number of transactions begun (does not include recovered txns)
-    TXN_READ_BEGIN,        // total number of read only transactions begun (does not include recovered txns)
-    TXN_COMMIT,            // successful commits
-    TXN_ABORT,
-    TXN_STATUS_NUM_ROWS
-} txn_status_entry;
-
-typedef struct {
-    bool initialized;
-    TOKU_ENGINE_STATUS_ROW_S status[TXN_STATUS_NUM_ROWS];
-} TXN_STATUS_S, *TXN_STATUS;
-
 void toku_txn_get_status(TXN_STATUS s);
 
 bool toku_is_txn_in_live_root_txn_list(const xid_omt_t &live_root_txn_list, TXNID xid);
@@ -382,11 +309,7 @@ time_t toku_txn_get_start_time(struct tokutxn *txn);
 // For the above to NOT be true:
 //  - id > context->snapshot_txnid64 OR id is in context's live root transaction list
 //
-int toku_txn_reads_txnid(TXNID txnid, struct tokutxn *txn);
-
-void txn_status_init(void);
-
-void txn_status_destroy(void);
+int toku_txn_reads_txnid(TXNID txnid, struct tokutxn *txn, bool is_provisional UU());
 
 // For serialize / deserialize
 

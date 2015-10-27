@@ -1,95 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
-
 #ident "$Id$"
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 // Purpose of this file is to handle all modifications and queries to the database
 // at the level of leafentry.  
@@ -101,8 +46,6 @@ PATENT RIGHTS GRANT:
 //
 // See design documentation for nested transactions at
 // TokuWiki/Imp/TransactionsOverview.
-
-#include <config.h>
 
 #include "portability/toku_portability.h"
 
@@ -125,53 +68,10 @@ PATENT RIGHTS GRANT:
 
 static uint32_t ule_get_innermost_numbytes(ULE ule, uint32_t keylen);
 
-///////////////////////////////////////////////////////////////////////////////////
-// Engine status
-//
-// Status is intended for display to humans to help understand system behavior.
-// It does not need to be perfectly thread-safe.
-
-static LE_STATUS_S le_status;
-
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(le_status, k, c, t, "le: " l, inc)
-
-void toku_ule_status_init(void) {
-    // Note, this function initializes the keyname, type, and legend fields.
-    // Value fields are initialized to zero by compiler.
-    STATUS_INIT(LE_MAX_COMMITTED_XR,   nullptr, UINT64, "max committed xr", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_MAX_PROVISIONAL_XR, nullptr, UINT64, "max provisional xr", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_EXPANDED,           nullptr, UINT64, "expanded", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_MAX_MEMSIZE,        nullptr, UINT64, "max memsize", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_APPLY_GC_BYTES_IN,  nullptr, PARCOUNT, "size of leafentries before garbage collection (during message application)", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_APPLY_GC_BYTES_OUT, nullptr, PARCOUNT, "size of leafentries after garbage collection (during message application)", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_NORMAL_GC_BYTES_IN, nullptr, PARCOUNT, "size of leafentries before garbage collection (outside message application)", TOKU_ENGINE_STATUS);
-    STATUS_INIT(LE_NORMAL_GC_BYTES_OUT,nullptr, PARCOUNT, "size of leafentries after garbage collection (outside message application)", TOKU_ENGINE_STATUS);
-    le_status.initialized = true;
-}
-#undef STATUS_INIT
-
-void toku_ule_status_destroy(void) {
-    for (int i = 0; i < LE_STATUS_NUM_ROWS; ++i) {
-        if (le_status.status[i].type == PARCOUNT) {
-            destroy_partitioned_counter(le_status.status[i].value.parcount);
-        }
-    }
-}
-
 void toku_le_get_status(LE_STATUS statp) {
+    le_status.init();
     *statp = le_status;
 }
-
-#define STATUS_VALUE(x) le_status.status[x].value.num
-#define STATUS_INC(x, d)                                                            \
-    do {                                                                            \
-        if (le_status.status[x].type == PARCOUNT) {                                 \
-            increment_partitioned_counter(le_status.status[x].value.parcount, d);   \
-        } else {                                                                    \
-            toku_sync_fetch_and_add(&le_status.status[x].value.num, d);             \
-        }                                                                           \
-    } while (0)
-
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Accessor functions used by outside world (e.g. indexer)
@@ -532,8 +432,8 @@ toku_le_apply_msg(const ft_msg &msg,
                             );
         size_t size_after_gc = ule_packed_memsize(&ule);
 
-        STATUS_INC(LE_APPLY_GC_BYTES_IN, size_before_gc);
-        STATUS_INC(LE_APPLY_GC_BYTES_OUT, size_after_gc);
+        LE_STATUS_INC(LE_APPLY_GC_BYTES_IN, size_before_gc);
+        LE_STATUS_INC(LE_APPLY_GC_BYTES_OUT, size_after_gc);
     }
 
     void *maybe_free = nullptr;
@@ -636,8 +536,8 @@ toku_le_garbage_collect(LEAFENTRY old_leaf_entry,
                             gc_info->txn_state_for_gc->live_root_txns);
         size_t size_after_gc = ule_packed_memsize(&ule);
 
-        STATUS_INC(LE_APPLY_GC_BYTES_IN, size_before_gc);
-        STATUS_INC(LE_APPLY_GC_BYTES_OUT, size_after_gc);
+        LE_STATUS_INC(LE_APPLY_GC_BYTES_IN, size_before_gc);
+        LE_STATUS_INC(LE_APPLY_GC_BYTES_OUT, size_after_gc);
     }
 
     void *maybe_free = nullptr;
@@ -943,14 +843,14 @@ uxr_unpack_data(UXR uxr, uint8_t *p) {
 // executed too often to be worth making threadsafe
 static inline void
 update_le_status(ULE ule, size_t memsize) {
-    if (ule->num_cuxrs > STATUS_VALUE(LE_MAX_COMMITTED_XR))
-        STATUS_VALUE(LE_MAX_COMMITTED_XR) = ule->num_cuxrs;
-    if (ule->num_puxrs > STATUS_VALUE(LE_MAX_PROVISIONAL_XR))
-        STATUS_VALUE(LE_MAX_PROVISIONAL_XR) = ule->num_puxrs;
+    if (ule->num_cuxrs > LE_STATUS_VAL(LE_MAX_COMMITTED_XR))
+        LE_STATUS_VAL(LE_MAX_COMMITTED_XR) = ule->num_cuxrs;
+    if (ule->num_puxrs > LE_STATUS_VAL(LE_MAX_PROVISIONAL_XR))
+        LE_STATUS_VAL(LE_MAX_PROVISIONAL_XR) = ule->num_puxrs;
     if (ule->num_cuxrs > MAX_TRANSACTION_RECORDS)
-        STATUS_VALUE(LE_EXPANDED)++;
-    if (memsize > STATUS_VALUE(LE_MAX_MEMSIZE))
-        STATUS_VALUE(LE_MAX_MEMSIZE) = memsize;
+        LE_STATUS_VAL(LE_EXPANDED)++;
+    if (memsize > LE_STATUS_VAL(LE_MAX_MEMSIZE))
+        LE_STATUS_VAL(LE_MAX_MEMSIZE) = memsize;
 }
 
 // Purpose is to return a newly allocated leaf entry in packed format, or
@@ -2020,13 +1920,13 @@ uxr_get_txnid(UXR uxr) {
 }
 
 static int
-le_iterate_get_accepted_index(TXNID *xids, uint32_t *index, uint32_t num_xids, LE_ITERATE_CALLBACK f, TOKUTXN context) {
+le_iterate_get_accepted_index(TXNID *xids, uint32_t *index, uint32_t num_xids, LE_ITERATE_CALLBACK f, TOKUTXN context, bool top_is_provisional) {
     uint32_t i;
     int r = 0;
     // if this for loop does not return anything, we return num_xids-1, which should map to T_0
     for (i = 0; i < num_xids - 1; i++) {
         TXNID xid = toku_dtoh64(xids[i]);
-        r = f(xid, context);
+        r = f(xid, context, (i == 0 && top_is_provisional));
         if (r==TOKUDB_ACCEPT) {
             r = 0;
             break; //or goto something
@@ -2102,7 +2002,7 @@ le_iterate_is_del(LEAFENTRY le, LE_ITERATE_CALLBACK f, bool *is_delp, TOKUTXN co
 #if ULE_DEBUG
             ule_verify_xids(&ule, num_interesting, xids);
 #endif
-            r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context);
+            r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context, (num_puxrs != 0));
             if (r!=0) goto cleanup;
             invariant(index < num_interesting);
 
@@ -2134,23 +2034,36 @@ cleanup:
     return r;
 }
 
+static int le_iterate_read_committed_callback(TXNID txnid, TOKUTXN txn, bool is_provisional UU()) {
+    if (is_provisional) {
+        return toku_txn_reads_txnid(txnid, txn, is_provisional);
+    }
+    return TOKUDB_ACCEPT;
+}
+
 //
 // Returns true if the value that is to be read is empty.
 //
-int le_val_is_del(LEAFENTRY le, bool is_snapshot_read, TOKUTXN txn) {
+int le_val_is_del(LEAFENTRY le, enum cursor_read_type read_type, TOKUTXN txn) {
     int rval;
-    if (is_snapshot_read) {
+    if (read_type == C_READ_SNAPSHOT || read_type == C_READ_COMMITTED) {
+        LE_ITERATE_CALLBACK f = (read_type == C_READ_SNAPSHOT) ?
+            toku_txn_reads_txnid :
+            le_iterate_read_committed_callback;
         bool is_del = false;
         le_iterate_is_del(
             le,
-            toku_txn_reads_txnid,
+            f,
             &is_del,
             txn
             );
         rval = is_del;
     }
-    else {
+    else if (read_type == C_READ_ANY) {
         rval = le_latest_is_del(le);
+    }
+    else {
+        invariant(false);
     }
     return rval;
 }
@@ -2211,7 +2124,7 @@ le_iterate_val(LEAFENTRY le, LE_ITERATE_CALLBACK f, void** valpp, uint32_t *vall
 #if ULE_DEBUG
             ule_verify_xids(&ule, num_interesting, xids);
 #endif
-            r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context);
+            r = le_iterate_get_accepted_index(xids, &index, num_interesting, f, context, (num_puxrs != 0));
             if (r!=0) goto cleanup;
             invariant(index < num_interesting);
 
@@ -2277,22 +2190,28 @@ cleanup:
 
 void le_extract_val(LEAFENTRY le,
                     // should we return the entire leafentry as the val?
-                    bool is_leaf_mode, bool is_snapshot_read,
+                    bool is_leaf_mode, enum cursor_read_type read_type,
                     TOKUTXN ttxn, uint32_t *vallen, void **val) {
     if (is_leaf_mode) {
         *val = le;
         *vallen = leafentry_memsize(le);
-    } else if (is_snapshot_read) {
+    } else if (read_type == C_READ_SNAPSHOT || read_type == C_READ_COMMITTED) {
+        LE_ITERATE_CALLBACK f = (read_type == C_READ_SNAPSHOT) ?
+            toku_txn_reads_txnid :
+            le_iterate_read_committed_callback;
         int r = le_iterate_val(
             le,
-            toku_txn_reads_txnid,
+            f,
             val,
             vallen,
             ttxn
             );
         lazy_assert_zero(r);
-    } else {
+    } else if (read_type == C_READ_ANY){
         *val = le_latest_val_and_len(le, vallen);
+    }
+    else {
+        assert(false);
     }
 }
 
@@ -2517,5 +2436,3 @@ void
 toku_ule_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&le_status, sizeof le_status);
 }
-
-#undef STATUS_VALUE

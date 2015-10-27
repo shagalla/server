@@ -96,6 +96,7 @@ set_cflags_if_supported(
   -Wno-error=address-of-array-temporary
   -Wno-error=tautological-constant-out-of-range-compare
   -Wno-ignored-attributes
+  -Wno-error=extern-c-compat
   -fno-rtti
   -fno-exceptions
   )
@@ -114,6 +115,13 @@ if (NOT CMAKE_CXX_COMPILER_ID MATCHES Clang)
   set_cflags_if_supported(
     -Wpacked
     )
+endif ()
+
+option (PROFILING "Allow profiling and debug" ON)
+if (PROFILING)
+  set_cflags_if_supported(
+    -fno-omit-frame-pointer
+  )
 endif ()
 
 ## this hits with optimized builds somewhere in ftleaf_split, we don't

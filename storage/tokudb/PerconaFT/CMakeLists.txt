@@ -74,9 +74,11 @@ add_subdirectory(portability)
 add_subdirectory(ft)
 add_subdirectory(locktree)
 add_subdirectory(src)
+add_subdirectory(ftcxx)
 add_subdirectory(tools)
 
-INSTALL_DOCUMENTATION(README.md README-TOKUDB COMPONENT Server)
+INSTALL_DOCUMENTATION(README.md COPYING.AGPLv3 COPYING.GPLv2 PATENTS
+  COMPONENT Server)
 
 ## build tags
 #include(TokuBuildTagDatabases)

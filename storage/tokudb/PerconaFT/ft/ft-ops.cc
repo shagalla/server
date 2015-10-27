@@ -1,93 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
+/*======
+This file is part of PerconaFT.
 
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
 
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
 
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-COPYRIGHT NOTICE:
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
 
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
+----------------------------------------
 
-DISCLAIMER:
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
 
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
 
-UNIVERSITY PATENT NOTICE:
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
 
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 /*
 
@@ -200,8 +147,6 @@ basement nodes, bulk fetch,  and partial fetch:
 
 */
 
-#include <config.h>
-
 #include "ft/cachetable/checkpoint.h"
 #include "ft/cursor.h"
 #include "ft/ft.h"
@@ -237,205 +182,44 @@ basement nodes, bulk fetch,  and partial fetch:
 /* Status is intended for display to humans to help understand system behavior.
  * It does not need to be perfectly thread-safe.
  */
-static FT_STATUS_S ft_status;
-
-#define STATUS_INIT(k,c,t,l,inc) TOKUFT_STATUS_INIT(ft_status, k, c, t, "ft: " l, inc)
 
 static toku_mutex_t ft_open_close_lock;
 
-static void
-status_init(void)
-{
-    // Note, this function initializes the keyname, type, and legend fields.
-    // Value fields are initialized to zero by compiler.
-    STATUS_INIT(FT_UPDATES,                                DICTIONARY_UPDATES, PARCOUNT, "dictionary updates", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_UPDATES_BROADCAST,                      DICTIONARY_BROADCAST_UPDATES, PARCOUNT, "dictionary broadcast updates", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DESCRIPTOR_SET,                         DESCRIPTOR_SET, PARCOUNT, "descriptor set", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_MSN_DISCARDS,                           MESSAGES_IGNORED_BY_LEAF_DUE_TO_MSN, PARCOUNT, "messages ignored by leaf due to msn", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOTAL_RETRIES,                          nullptr, PARCOUNT, "total search retries due to TRY_AGAIN", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_SEARCH_TRIES_GT_HEIGHT,                 nullptr, PARCOUNT, "searches requiring more tries than the height of the tree", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_SEARCH_TRIES_GT_HEIGHTPLUS3,            nullptr, PARCOUNT, "searches requiring more tries than the height of the tree plus three", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_CREATE_LEAF,                            LEAF_NODES_CREATED, PARCOUNT, "leaf nodes created", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_CREATE_NONLEAF,                         NONLEAF_NODES_CREATED, PARCOUNT, "nonleaf nodes created", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DESTROY_LEAF,                           LEAF_NODES_DESTROYED, PARCOUNT, "leaf nodes destroyed", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DESTROY_NONLEAF,                        NONLEAF_NODES_DESTROYED, PARCOUNT, "nonleaf nodes destroyed", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_MSG_BYTES_IN,                           MESSAGES_INJECTED_AT_ROOT_BYTES, PARCOUNT, "bytes of messages injected at root (all trees)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_MSG_BYTES_OUT,                          MESSAGES_FLUSHED_FROM_H1_TO_LEAVES_BYTES, PARCOUNT, "bytes of messages flushed from h1 nodes to leaves", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_MSG_BYTES_CURR,                         MESSAGES_IN_TREES_ESTIMATE_BYTES, PARCOUNT, "bytes of messages currently in trees (estimate)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_MSG_NUM,                                MESSAGES_INJECTED_AT_ROOT, PARCOUNT, "messages injected at root", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_MSG_NUM_BROADCAST,                      BROADCASE_MESSAGES_INJECTED_AT_ROOT, PARCOUNT, "broadcast messages injected at root", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-
-    STATUS_INIT(FT_NUM_BASEMENTS_DECOMPRESSED_NORMAL,      BASEMENTS_DECOMPRESSED_TARGET_QUERY, PARCOUNT, "basements decompressed as a target of a query", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_BASEMENTS_DECOMPRESSED_AGGRESSIVE,  BASEMENTS_DECOMPRESSED_PRELOCKED_RANGE, PARCOUNT, "basements decompressed for prelocked range", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_BASEMENTS_DECOMPRESSED_PREFETCH,    BASEMENTS_DECOMPRESSED_PREFETCH, PARCOUNT, "basements decompressed for prefetch", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_BASEMENTS_DECOMPRESSED_WRITE,       BASEMENTS_DECOMPRESSED_FOR_WRITE, PARCOUNT, "basements decompressed for write", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_MSG_BUFFER_DECOMPRESSED_NORMAL,     BUFFERS_DECOMPRESSED_TARGET_QUERY, PARCOUNT, "buffers decompressed as a target of a query", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_MSG_BUFFER_DECOMPRESSED_AGGRESSIVE, BUFFERS_DECOMPRESSED_PRELOCKED_RANGE, PARCOUNT, "buffers decompressed for prelocked range", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_MSG_BUFFER_DECOMPRESSED_PREFETCH,   BUFFERS_DECOMPRESSED_PREFETCH, PARCOUNT, "buffers decompressed for prefetch", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_MSG_BUFFER_DECOMPRESSED_WRITE,      BUFFERS_DECOMPRESSED_FOR_WRITE, PARCOUNT, "buffers decompressed for write", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-
-    // Eviction statistics:
-    STATUS_INIT(FT_FULL_EVICTIONS_LEAF,                    LEAF_NODE_FULL_EVICTIONS, PARCOUNT, "leaf node full evictions", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_FULL_EVICTIONS_LEAF_BYTES,              LEAF_NODE_FULL_EVICTIONS_BYTES, PARCOUNT, "leaf node full evictions (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_FULL_EVICTIONS_NONLEAF,                 NONLEAF_NODE_FULL_EVICTIONS, PARCOUNT, "nonleaf node full evictions", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_FULL_EVICTIONS_NONLEAF_BYTES,           NONLEAF_NODE_FULL_EVICTIONS_BYTES, PARCOUNT, "nonleaf node full evictions (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PARTIAL_EVICTIONS_LEAF,                 LEAF_NODE_PARTIAL_EVICTIONS, PARCOUNT, "leaf node partial evictions", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PARTIAL_EVICTIONS_LEAF_BYTES,           LEAF_NODE_PARTIAL_EVICTIONS_BYTES, PARCOUNT, "leaf node partial evictions (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PARTIAL_EVICTIONS_NONLEAF,              NONLEAF_NODE_PARTIAL_EVICTIONS, PARCOUNT, "nonleaf node partial evictions", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PARTIAL_EVICTIONS_NONLEAF_BYTES,        NONLEAF_NODE_PARTIAL_EVICTIONS_BYTES, PARCOUNT, "nonleaf node partial evictions (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-
-    // Disk read statistics: 
-    //
-    // Pivots: For queries, prefetching, or writing.
-    STATUS_INIT(FT_NUM_PIVOTS_FETCHED_QUERY,               PIVOTS_FETCHED_FOR_QUERY, PARCOUNT, "pivots fetched for query", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_PIVOTS_FETCHED_QUERY,             PIVOTS_FETCHED_FOR_QUERY_BYTES, PARCOUNT, "pivots fetched for query (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_PIVOTS_FETCHED_QUERY,          PIVOTS_FETCHED_FOR_QUERY_SECONDS, TOKUTIME, "pivots fetched for query (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_PIVOTS_FETCHED_PREFETCH,            PIVOTS_FETCHED_FOR_PREFETCH, PARCOUNT, "pivots fetched for prefetch", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_PIVOTS_FETCHED_PREFETCH,          PIVOTS_FETCHED_FOR_PREFETCH_BYTES, PARCOUNT, "pivots fetched for prefetch (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_PIVOTS_FETCHED_PREFETCH,       PIVOTS_FETCHED_FOR_PREFETCH_SECONDS, TOKUTIME, "pivots fetched for prefetch (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_PIVOTS_FETCHED_WRITE,               PIVOTS_FETCHED_FOR_WRITE, PARCOUNT, "pivots fetched for write", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_PIVOTS_FETCHED_WRITE,             PIVOTS_FETCHED_FOR_WRITE_BYTES, PARCOUNT, "pivots fetched for write (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_PIVOTS_FETCHED_WRITE,          PIVOTS_FETCHED_FOR_WRITE_SECONDS, TOKUTIME, "pivots fetched for write (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    // Basements: For queries, aggressive fetching in prelocked range, prefetching, or writing.
-    STATUS_INIT(FT_NUM_BASEMENTS_FETCHED_NORMAL,           BASEMENTS_FETCHED_TARGET_QUERY, PARCOUNT, "basements fetched as a target of a query", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_BASEMENTS_FETCHED_NORMAL,         BASEMENTS_FETCHED_TARGET_QUERY_BYTES, PARCOUNT, "basements fetched as a target of a query (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_BASEMENTS_FETCHED_NORMAL,      BASEMENTS_FETCHED_TARGET_QUERY_SECONDS, TOKUTIME, "basements fetched as a target of a query (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_BASEMENTS_FETCHED_AGGRESSIVE,       BASEMENTS_FETCHED_PRELOCKED_RANGE, PARCOUNT, "basements fetched for prelocked range", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_BASEMENTS_FETCHED_AGGRESSIVE,     BASEMENTS_FETCHED_PRELOCKED_RANGE_BYTES, PARCOUNT, "basements fetched for prelocked range (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_BASEMENTS_FETCHED_AGGRESSIVE,  BASEMENTS_FETCHED_PRELOCKED_RANGE_SECONDS, TOKUTIME, "basements fetched for prelocked range (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_BASEMENTS_FETCHED_PREFETCH,         BASEMENTS_FETCHED_PREFETCH, PARCOUNT, "basements fetched for prefetch", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_BASEMENTS_FETCHED_PREFETCH,       BASEMENTS_FETCHED_PREFETCH_BYTES, PARCOUNT, "basements fetched for prefetch (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_BASEMENTS_FETCHED_PREFETCH,    BASEMENTS_FETCHED_PREFETCH_SECONDS, TOKUTIME, "basements fetched for prefetch (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_BASEMENTS_FETCHED_WRITE,            BASEMENTS_FETCHED_FOR_WRITE, PARCOUNT, "basements fetched for write", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_BASEMENTS_FETCHED_WRITE,          BASEMENTS_FETCHED_FOR_WRITE_BYTES, PARCOUNT, "basements fetched for write (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_BASEMENTS_FETCHED_WRITE,       BASEMENTS_FETCHED_FOR_WRITE_SECONDS, TOKUTIME, "basements fetched for write (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    // Buffers: For queries, aggressive fetching in prelocked range, prefetching, or writing.
-    STATUS_INIT(FT_NUM_MSG_BUFFER_FETCHED_NORMAL,          BUFFERS_FETCHED_TARGET_QUERY, PARCOUNT, "buffers fetched as a target of a query", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_MSG_BUFFER_FETCHED_NORMAL,        BUFFERS_FETCHED_TARGET_QUERY_BYTES, PARCOUNT, "buffers fetched as a target of a query (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_MSG_BUFFER_FETCHED_NORMAL,     BUFFERS_FETCHED_TARGET_QUERY_SECONDS, TOKUTIME, "buffers fetched as a target of a query (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_MSG_BUFFER_FETCHED_AGGRESSIVE,      BUFFERS_FETCHED_PRELOCKED_RANGE, PARCOUNT, "buffers fetched for prelocked range", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_MSG_BUFFER_FETCHED_AGGRESSIVE,    BUFFERS_FETCHED_PRELOCKED_RANGE_BYTES, PARCOUNT, "buffers fetched for prelocked range (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_MSG_BUFFER_FETCHED_AGGRESSIVE, BUFFERS_FETCHED_PRELOCKED_RANGE_SECONDS, TOKUTIME, "buffers fetched for prelocked range (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_MSG_BUFFER_FETCHED_PREFETCH,        BUFFERS_FETCHED_PREFETCH, PARCOUNT, "buffers fetched for prefetch", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_MSG_BUFFER_FETCHED_PREFETCH,      BUFFERS_FETCHED_PREFETCH_BYTES, PARCOUNT, "buffers fetched for prefetch (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_MSG_BUFFER_FETCHED_PREFETCH,   BUFFERS_FETCHED_PREFETCH_SECONDS, TOKUTIME, "buffers fetched for prefetch (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NUM_MSG_BUFFER_FETCHED_WRITE,           BUFFERS_FETCHED_FOR_WRITE, PARCOUNT, "buffers fetched for write", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BYTES_MSG_BUFFER_FETCHED_WRITE,         BUFFERS_FETCHED_FOR_WRITE_BYTES, PARCOUNT, "buffers fetched for write (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_TOKUTIME_MSG_BUFFER_FETCHED_WRITE,      BUFFERS_FETCHED_FOR_WRITE_SECONDS, TOKUTIME, "buffers fetched for write (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-
-    // Disk write statistics.
-    //
-    // Leaf/Nonleaf: Not for checkpoint
-    STATUS_INIT(FT_DISK_FLUSH_LEAF,                                         LEAF_NODES_FLUSHED_NOT_CHECKPOINT, PARCOUNT, "leaf nodes flushed to disk (not for checkpoint)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_LEAF_BYTES,                                   LEAF_NODES_FLUSHED_NOT_CHECKPOINT_BYTES, PARCOUNT, "leaf nodes flushed to disk (not for checkpoint) (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES,                      LEAF_NODES_FLUSHED_NOT_CHECKPOINT_UNCOMPRESSED_BYTES, PARCOUNT, "leaf nodes flushed to disk (not for checkpoint) (uncompressed bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_LEAF_TOKUTIME,                                LEAF_NODES_FLUSHED_NOT_CHECKPOINT_SECONDS, TOKUTIME, "leaf nodes flushed to disk (not for checkpoint) (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_NONLEAF,                                      NONLEAF_NODES_FLUSHED_TO_DISK_NOT_CHECKPOINT, PARCOUNT, "nonleaf nodes flushed to disk (not for checkpoint)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_NONLEAF_BYTES,                                NONLEAF_NODES_FLUSHED_TO_DISK_NOT_CHECKPOINT_BYTES, PARCOUNT, "nonleaf nodes flushed to disk (not for checkpoint) (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES,                   NONLEAF_NODES_FLUSHED_TO_DISK_NOT_CHECKPOINT_UNCOMPRESSED_BYTES, PARCOUNT, "nonleaf nodes flushed to disk (not for checkpoint) (uncompressed bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_NONLEAF_TOKUTIME,                             NONLEAF_NODES_FLUSHED_TO_DISK_NOT_CHECKPOINT_SECONDS, TOKUTIME, "nonleaf nodes flushed to disk (not for checkpoint) (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    // Leaf/Nonleaf: For checkpoint
-    STATUS_INIT(FT_DISK_FLUSH_LEAF_FOR_CHECKPOINT,                          LEAF_NODES_FLUSHED_CHECKPOINT, PARCOUNT, "leaf nodes flushed to disk (for checkpoint)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_LEAF_BYTES_FOR_CHECKPOINT,                    LEAF_NODES_FLUSHED_CHECKPOINT_BYTES, PARCOUNT, "leaf nodes flushed to disk (for checkpoint) (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT,       LEAF_NODES_FLUSHED_CHECKPOINT_UNCOMPRESSED_BYTES, PARCOUNT, "leaf nodes flushed to disk (for checkpoint) (uncompressed bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_LEAF_TOKUTIME_FOR_CHECKPOINT,                 LEAF_NODES_FLUSHED_CHECKPOINT_SECONDS, TOKUTIME, "leaf nodes flushed to disk (for checkpoint) (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_NONLEAF_FOR_CHECKPOINT,                       NONLEAF_NODES_FLUSHED_TO_DISK_CHECKPOINT, PARCOUNT, "nonleaf nodes flushed to disk (for checkpoint)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_NONLEAF_BYTES_FOR_CHECKPOINT,                 NONLEAF_NODES_FLUSHED_TO_DISK_CHECKPOINT_BYTES, PARCOUNT, "nonleaf nodes flushed to disk (for checkpoint) (bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT,    NONLEAF_NODES_FLUSHED_TO_DISK_CHECKPOINT_UNCOMPRESSED_BYTES, PARCOUNT, "nonleaf nodes flushed to disk (for checkpoint) (uncompressed bytes)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_NONLEAF_TOKUTIME_FOR_CHECKPOINT,              NONLEAF_NODES_FLUSHED_TO_DISK_CHECKPOINT_SECONDS, TOKUTIME, "nonleaf nodes flushed to disk (for checkpoint) (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_LEAF_COMPRESSION_RATIO,                       LEAF_NODE_COMPRESSION_RATIO, DOUBLE, "uncompressed / compressed bytes written (leaf)", TOKU_GLOBAL_STATUS|TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_NONLEAF_COMPRESSION_RATIO,                    NONLEAF_NODE_COMPRESSION_RATIO, DOUBLE, "uncompressed / compressed bytes written (nonleaf)", TOKU_GLOBAL_STATUS|TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_DISK_FLUSH_OVERALL_COMPRESSION_RATIO,                    OVERALL_NODE_COMPRESSION_RATIO, DOUBLE, "uncompressed / compressed bytes written (overall)", TOKU_GLOBAL_STATUS|TOKU_ENGINE_STATUS);
-
-    // CPU time statistics for [de]serialization and [de]compression.
-    STATUS_INIT(FT_LEAF_COMPRESS_TOKUTIME,                                  LEAF_COMPRESSION_TO_MEMORY_SECONDS, TOKUTIME, "leaf compression to memory (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_LEAF_SERIALIZE_TOKUTIME,                                 LEAF_SERIALIZATION_TO_MEMORY_SECONDS, TOKUTIME, "leaf serialization to memory (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_LEAF_DECOMPRESS_TOKUTIME,                                LEAF_DECOMPRESSION_TO_MEMORY_SECONDS, TOKUTIME, "leaf decompression to memory (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_LEAF_DESERIALIZE_TOKUTIME,                               LEAF_DESERIALIZATION_TO_MEMORY_SECONDS, TOKUTIME, "leaf deserialization to memory (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NONLEAF_COMPRESS_TOKUTIME,                               NONLEAF_COMPRESSION_TO_MEMORY_SECONDS, TOKUTIME, "nonleaf compression to memory (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NONLEAF_SERIALIZE_TOKUTIME,                              NONLEAF_SERIALIZATION_TO_MEMORY_SECONDS, TOKUTIME, "nonleaf serialization to memory (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NONLEAF_DECOMPRESS_TOKUTIME,                             NONLEAF_DECOMPRESSION_TO_MEMORY_SECONDS, TOKUTIME, "nonleaf decompression to memory (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_NONLEAF_DESERIALIZE_TOKUTIME,                            NONLEAF_DESERIALIZATION_TO_MEMORY_SECONDS, TOKUTIME, "nonleaf deserialization to memory (seconds)", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-
-    // Promotion statistics.
-    STATUS_INIT(FT_PRO_NUM_ROOT_SPLIT,                     PROMOTION_ROOTS_SPLIT, PARCOUNT, "promotion: roots split", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_ROOT_H0_INJECT,                 PROMOTION_LEAF_ROOTS_INJECTED_INTO, PARCOUNT, "promotion: leaf roots injected into", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_ROOT_H1_INJECT,                 PROMOTION_H1_ROOTS_INJECTED_INTO, PARCOUNT, "promotion: h1 roots injected into", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_INJECT_DEPTH_0,                 PROMOTION_INJECTIONS_AT_DEPTH_0, PARCOUNT, "promotion: injections at depth 0", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_INJECT_DEPTH_1,                 PROMOTION_INJECTIONS_AT_DEPTH_1, PARCOUNT, "promotion: injections at depth 1", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_INJECT_DEPTH_2,                 PROMOTION_INJECTIONS_AT_DEPTH_2, PARCOUNT, "promotion: injections at depth 2", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_INJECT_DEPTH_3,                 PROMOTION_INJECTIONS_AT_DEPTH_3, PARCOUNT, "promotion: injections at depth 3", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_INJECT_DEPTH_GT3,               PROMOTION_INJECTIONS_LOWER_THAN_DEPTH_3, PARCOUNT, "promotion: injections lower than depth 3", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_STOP_NONEMPTY_BUF,              PROMOTION_STOPPED_NONEMPTY_BUFFER, PARCOUNT, "promotion: stopped because of a nonempty buffer", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_STOP_H1,                        PROMOTION_STOPPED_AT_HEIGHT_1, PARCOUNT, "promotion: stopped at height 1", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_STOP_LOCK_CHILD,                PROMOTION_STOPPED_CHILD_LOCKED_OR_NOT_IN_MEMORY, PARCOUNT, "promotion: stopped because the child was locked or not at all in memory", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_STOP_CHILD_INMEM,               PROMOTION_STOPPED_CHILD_NOT_FULLY_IN_MEMORY, PARCOUNT, "promotion: stopped because the child was not fully in memory", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_NUM_DIDNT_WANT_PROMOTE,             PROMOTION_STOPPED_AFTER_LOCKING_CHILD, PARCOUNT, "promotion: stopped anyway, after locking the child", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BASEMENT_DESERIALIZE_FIXED_KEYSIZE,     BASEMENT_DESERIALIZATION_FIXED_KEY, PARCOUNT, "basement nodes deserialized with fixed-keysize", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_BASEMENT_DESERIALIZE_VARIABLE_KEYSIZE,  BASEMENT_DESERIALIZATION_VARIABLE_KEY, PARCOUNT, "basement nodes deserialized with variable-keysize", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-    STATUS_INIT(FT_PRO_RIGHTMOST_LEAF_SHORTCUT_SUCCESS,    nullptr, PARCOUNT, "promotion: succeeded in using the rightmost leaf shortcut", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_PRO_RIGHTMOST_LEAF_SHORTCUT_FAIL_POS,   nullptr, PARCOUNT, "promotion: tried the rightmost leaf shorcut but failed (out-of-bounds)", TOKU_ENGINE_STATUS);
-    STATUS_INIT(FT_PRO_RIGHTMOST_LEAF_SHORTCUT_FAIL_REACTIVE,nullptr, PARCOUNT, "promotion: tried the rightmost leaf shorcut but failed (child reactive)", TOKU_ENGINE_STATUS);
-
-    STATUS_INIT(FT_CURSOR_SKIP_DELETED_LEAF_ENTRY,         CURSOR_SKIP_DELETED_LEAF_ENTRY, PARCOUNT, "cursor skipped deleted leaf entries", TOKU_ENGINE_STATUS|TOKU_GLOBAL_STATUS);
-
-    ft_status.initialized = true;
-}
-static void status_destroy(void) {
-    for (int i = 0; i < FT_STATUS_NUM_ROWS; ++i) {
-        if (ft_status.status[i].type == PARCOUNT) {
-            destroy_partitioned_counter(ft_status.status[i].value.parcount);
-        }
-    }
-}
-#undef STATUS_INIT
-
-#define STATUS_VAL(x)                                                               \
-    (ft_status.status[x].type == PARCOUNT ?                                         \
-        read_partitioned_counter(ft_status.status[x].value.parcount) :              \
-        ft_status.status[x].value.num)
-
 void
 toku_ft_get_status(FT_STATUS s) {
+    ft_status.init();
     *s = ft_status;
 
     // Calculate compression ratios for leaf and nonleaf nodes
-    const double compressed_leaf_bytes = STATUS_VAL(FT_DISK_FLUSH_LEAF_BYTES) +
-                                         STATUS_VAL(FT_DISK_FLUSH_LEAF_BYTES_FOR_CHECKPOINT);
-    const double uncompressed_leaf_bytes = STATUS_VAL(FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES) +
-                                           STATUS_VAL(FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT);
-    const double compressed_nonleaf_bytes = STATUS_VAL(FT_DISK_FLUSH_NONLEAF_BYTES) +
-                                            STATUS_VAL(FT_DISK_FLUSH_NONLEAF_BYTES_FOR_CHECKPOINT);
-    const double uncompressed_nonleaf_bytes = STATUS_VAL(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES) +
-                                              STATUS_VAL(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT);
+    const double compressed_leaf_bytes = FT_STATUS_VAL(FT_DISK_FLUSH_LEAF_BYTES) +
+                                         FT_STATUS_VAL(FT_DISK_FLUSH_LEAF_BYTES_FOR_CHECKPOINT);
+    const double uncompressed_leaf_bytes = FT_STATUS_VAL(FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES) +
+                                           FT_STATUS_VAL(FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT);
+    const double compressed_nonleaf_bytes = FT_STATUS_VAL(FT_DISK_FLUSH_NONLEAF_BYTES) +
+                                            FT_STATUS_VAL(FT_DISK_FLUSH_NONLEAF_BYTES_FOR_CHECKPOINT);
+    const double uncompressed_nonleaf_bytes = FT_STATUS_VAL(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES) +
+                                              FT_STATUS_VAL(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT);
 
     if (compressed_leaf_bytes > 0) {
-        s->status[FT_DISK_FLUSH_LEAF_COMPRESSION_RATIO].value.dnum = uncompressed_leaf_bytes / compressed_leaf_bytes;
+        s->status[FT_STATUS_S::FT_DISK_FLUSH_LEAF_COMPRESSION_RATIO].value.dnum
+            = uncompressed_leaf_bytes / compressed_leaf_bytes;
     }
     if (compressed_nonleaf_bytes > 0) {
-        s->status[FT_DISK_FLUSH_NONLEAF_COMPRESSION_RATIO].value.dnum = uncompressed_nonleaf_bytes / compressed_nonleaf_bytes;
+        s->status[FT_STATUS_S::FT_DISK_FLUSH_NONLEAF_COMPRESSION_RATIO].value.dnum
+            = uncompressed_nonleaf_bytes / compressed_nonleaf_bytes;
     }
     if (compressed_leaf_bytes > 0 || compressed_nonleaf_bytes > 0) {
-        s->status[FT_DISK_FLUSH_OVERALL_COMPRESSION_RATIO].value.dnum =
-            (uncompressed_leaf_bytes + uncompressed_nonleaf_bytes) / (compressed_leaf_bytes + compressed_nonleaf_bytes);
+        s->status[FT_STATUS_S::FT_DISK_FLUSH_OVERALL_COMPRESSION_RATIO].value.dnum
+            = (uncompressed_leaf_bytes + uncompressed_nonleaf_bytes) /
+              (compressed_leaf_bytes + compressed_nonleaf_bytes);
     }
 }
 
-#define STATUS_INC(x, d)                                                            \
-    do {                                                                            \
-        if (ft_status.status[x].type == PARCOUNT) {                                 \
-            increment_partitioned_counter(ft_status.status[x].value.parcount, d);   \
-        } else {                                                                    \
-            toku_sync_fetch_and_add(&ft_status.status[x].value.num, d);             \
-        }                                                                           \
-    } while (0)
-
-
 void toku_note_deserialized_basement_node(bool fixed_key_size) {
     if (fixed_key_size) {
-        STATUS_INC(FT_BASEMENT_DESERIALIZE_FIXED_KEYSIZE, 1);
+        FT_STATUS_INC(FT_BASEMENT_DESERIALIZE_FIXED_KEYSIZE, 1);
     } else {
-        STATUS_INC(FT_BASEMENT_DESERIALIZE_VARIABLE_KEYSIZE, 1);
+        FT_STATUS_INC(FT_BASEMENT_DESERIALIZE_VARIABLE_KEYSIZE, 1);
     }
 }
 
@@ -773,30 +557,30 @@ void toku_ft_status_update_flush_reason(FTNODE node,
         tokutime_t write_time, bool for_checkpoint) {
     if (node->height == 0) {
         if (for_checkpoint) {
-            STATUS_INC(FT_DISK_FLUSH_LEAF_FOR_CHECKPOINT, 1);
-            STATUS_INC(FT_DISK_FLUSH_LEAF_BYTES_FOR_CHECKPOINT, bytes_written);
-            STATUS_INC(FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT, uncompressed_bytes_flushed);
-            STATUS_INC(FT_DISK_FLUSH_LEAF_TOKUTIME_FOR_CHECKPOINT, write_time);
+            FT_STATUS_INC(FT_DISK_FLUSH_LEAF_FOR_CHECKPOINT, 1);
+            FT_STATUS_INC(FT_DISK_FLUSH_LEAF_BYTES_FOR_CHECKPOINT, bytes_written);
+            FT_STATUS_INC(FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT, uncompressed_bytes_flushed);
+            FT_STATUS_INC(FT_DISK_FLUSH_LEAF_TOKUTIME_FOR_CHECKPOINT, write_time);
         }
         else {
-            STATUS_INC(FT_DISK_FLUSH_LEAF, 1);
-            STATUS_INC(FT_DISK_FLUSH_LEAF_BYTES, bytes_written);
-            STATUS_INC(FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES, uncompressed_bytes_flushed);
-            STATUS_INC(FT_DISK_FLUSH_LEAF_TOKUTIME, write_time);
+            FT_STATUS_INC(FT_DISK_FLUSH_LEAF, 1);
+            FT_STATUS_INC(FT_DISK_FLUSH_LEAF_BYTES, bytes_written);
+            FT_STATUS_INC(FT_DISK_FLUSH_LEAF_UNCOMPRESSED_BYTES, uncompressed_bytes_flushed);
+            FT_STATUS_INC(FT_DISK_FLUSH_LEAF_TOKUTIME, write_time);
         }
     }
     else {
         if (for_checkpoint) {
-            STATUS_INC(FT_DISK_FLUSH_NONLEAF_FOR_CHECKPOINT, 1);
-            STATUS_INC(FT_DISK_FLUSH_NONLEAF_BYTES_FOR_CHECKPOINT, bytes_written);
-            STATUS_INC(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT, uncompressed_bytes_flushed);
-            STATUS_INC(FT_DISK_FLUSH_NONLEAF_TOKUTIME_FOR_CHECKPOINT, write_time);
+            FT_STATUS_INC(FT_DISK_FLUSH_NONLEAF_FOR_CHECKPOINT, 1);
+            FT_STATUS_INC(FT_DISK_FLUSH_NONLEAF_BYTES_FOR_CHECKPOINT, bytes_written);
+            FT_STATUS_INC(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES_FOR_CHECKPOINT, uncompressed_bytes_flushed);
+            FT_STATUS_INC(FT_DISK_FLUSH_NONLEAF_TOKUTIME_FOR_CHECKPOINT, write_time);
         }
         else {
-            STATUS_INC(FT_DISK_FLUSH_NONLEAF, 1);
-            STATUS_INC(FT_DISK_FLUSH_NONLEAF_BYTES, bytes_written);
-            STATUS_INC(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES, uncompressed_bytes_flushed);
-            STATUS_INC(FT_DISK_FLUSH_NONLEAF_TOKUTIME, write_time);
+            FT_STATUS_INC(FT_DISK_FLUSH_NONLEAF, 1);
+            FT_STATUS_INC(FT_DISK_FLUSH_NONLEAF_BYTES, bytes_written);
+            FT_STATUS_INC(FT_DISK_FLUSH_NONLEAF_UNCOMPRESSED_BYTES, uncompressed_bytes_flushed);
+            FT_STATUS_INC(FT_DISK_FLUSH_NONLEAF_TOKUTIME, write_time);
         }
     }
 }
@@ -912,11 +696,11 @@ void toku_ftnode_flush_callback(
         if (!is_clone) {
             long node_size = ftnode_memory_size(ftnode);
             if (ftnode->height == 0) {
-                STATUS_INC(FT_FULL_EVICTIONS_LEAF, 1);
-                STATUS_INC(FT_FULL_EVICTIONS_LEAF_BYTES, node_size);
+                FT_STATUS_INC(FT_FULL_EVICTIONS_LEAF, 1);
+                FT_STATUS_INC(FT_FULL_EVICTIONS_LEAF_BYTES, node_size);
             } else {
-                STATUS_INC(FT_FULL_EVICTIONS_NONLEAF, 1);
-                STATUS_INC(FT_FULL_EVICTIONS_NONLEAF_BYTES, node_size);
+                FT_STATUS_INC(FT_FULL_EVICTIONS_NONLEAF, 1);
+                FT_STATUS_INC(FT_FULL_EVICTIONS_NONLEAF_BYTES, node_size);
             }
             toku_free(*disk_data);
         }
@@ -941,17 +725,17 @@ void
 toku_ft_status_update_pivot_fetch_reason(ftnode_fetch_extra *bfe)
 {
     if (bfe->type == ftnode_fetch_prefetch) {
-        STATUS_INC(FT_NUM_PIVOTS_FETCHED_PREFETCH, 1);
-        STATUS_INC(FT_BYTES_PIVOTS_FETCHED_PREFETCH, bfe->bytes_read);
-        STATUS_INC(FT_TOKUTIME_PIVOTS_FETCHED_PREFETCH, bfe->io_time);
+        FT_STATUS_INC(FT_NUM_PIVOTS_FETCHED_PREFETCH, 1);
+        FT_STATUS_INC(FT_BYTES_PIVOTS_FETCHED_PREFETCH, bfe->bytes_read);
+        FT_STATUS_INC(FT_TOKUTIME_PIVOTS_FETCHED_PREFETCH, bfe->io_time);
     } else if (bfe->type == ftnode_fetch_all) {
-        STATUS_INC(FT_NUM_PIVOTS_FETCHED_WRITE, 1);
-        STATUS_INC(FT_BYTES_PIVOTS_FETCHED_WRITE, bfe->bytes_read);
-        STATUS_INC(FT_TOKUTIME_PIVOTS_FETCHED_WRITE, bfe->io_time);
+        FT_STATUS_INC(FT_NUM_PIVOTS_FETCHED_WRITE, 1);
+        FT_STATUS_INC(FT_BYTES_PIVOTS_FETCHED_WRITE, bfe->bytes_read);
+        FT_STATUS_INC(FT_TOKUTIME_PIVOTS_FETCHED_WRITE, bfe->io_time);
     } else if (bfe->type == ftnode_fetch_subset || bfe->type == ftnode_fetch_keymatch) {
-        STATUS_INC(FT_NUM_PIVOTS_FETCHED_QUERY, 1);
-        STATUS_INC(FT_BYTES_PIVOTS_FETCHED_QUERY, bfe->bytes_read);
-        STATUS_INC(FT_TOKUTIME_PIVOTS_FETCHED_QUERY, bfe->io_time);
+        FT_STATUS_INC(FT_NUM_PIVOTS_FETCHED_QUERY, 1);
+        FT_STATUS_INC(FT_BYTES_PIVOTS_FETCHED_QUERY, bfe->bytes_read);
+        FT_STATUS_INC(FT_TOKUTIME_PIVOTS_FETCHED_QUERY, bfe->io_time);
     }
 }
 
@@ -1187,12 +971,12 @@ exit:
     if (num_partial_evictions > 0) {
         if (height == 0) {
             long delta = old_attr.leaf_size - new_attr.leaf_size;
-            STATUS_INC(FT_PARTIAL_EVICTIONS_LEAF, num_partial_evictions);
-            STATUS_INC(FT_PARTIAL_EVICTIONS_LEAF_BYTES, delta);
+            FT_STATUS_INC(FT_PARTIAL_EVICTIONS_LEAF, num_partial_evictions);
+            FT_STATUS_INC(FT_PARTIAL_EVICTIONS_LEAF_BYTES, delta);
         } else {
             long delta = old_attr.nonleaf_size - new_attr.nonleaf_size;
-            STATUS_INC(FT_PARTIAL_EVICTIONS_NONLEAF, num_partial_evictions);
-            STATUS_INC(FT_PARTIAL_EVICTIONS_NONLEAF_BYTES, delta);
+            FT_STATUS_INC(FT_PARTIAL_EVICTIONS_NONLEAF, num_partial_evictions);
+            FT_STATUS_INC(FT_PARTIAL_EVICTIONS_NONLEAF_BYTES, delta);
         }
     }
     return 0;
@@ -1204,7 +988,7 @@ exit:
 // We need a function to have something a drd suppression can reference
 // see src/tests/drd.suppressions (unsafe_touch_clock)
 static void unsafe_touch_clock(FTNODE node, int i) {
-    toku_drd_unsafe_set(&node->bp[i].clock_count, static_cast<unsigned char>(1));
+    toku_unsafe_set(&node->bp[i].clock_count, static_cast<unsigned char>(1));
 }
 
 // Callback that states if a partial fetch of the node is necessary
@@ -1306,70 +1090,70 @@ ft_status_update_partial_fetch_reason(
     if (is_leaf) {
         if (bfe->type == ftnode_fetch_prefetch) {
             if (state == PT_COMPRESSED) {
-                STATUS_INC(FT_NUM_BASEMENTS_DECOMPRESSED_PREFETCH, 1);
+                FT_STATUS_INC(FT_NUM_BASEMENTS_DECOMPRESSED_PREFETCH, 1);
             } else {
-                STATUS_INC(FT_NUM_BASEMENTS_FETCHED_PREFETCH, 1);
-                STATUS_INC(FT_BYTES_BASEMENTS_FETCHED_PREFETCH, bfe->bytes_read);
-                STATUS_INC(FT_TOKUTIME_BASEMENTS_FETCHED_PREFETCH, bfe->io_time);
+                FT_STATUS_INC(FT_NUM_BASEMENTS_FETCHED_PREFETCH, 1);
+                FT_STATUS_INC(FT_BYTES_BASEMENTS_FETCHED_PREFETCH, bfe->bytes_read);
+                FT_STATUS_INC(FT_TOKUTIME_BASEMENTS_FETCHED_PREFETCH, bfe->io_time);
             }
         } else if (bfe->type == ftnode_fetch_all) {
             if (state == PT_COMPRESSED) {
-                STATUS_INC(FT_NUM_BASEMENTS_DECOMPRESSED_WRITE, 1);
+                FT_STATUS_INC(FT_NUM_BASEMENTS_DECOMPRESSED_WRITE, 1);
             } else {
-                STATUS_INC(FT_NUM_BASEMENTS_FETCHED_WRITE, 1);
-                STATUS_INC(FT_BYTES_BASEMENTS_FETCHED_WRITE, bfe->bytes_read);
-                STATUS_INC(FT_TOKUTIME_BASEMENTS_FETCHED_WRITE, bfe->io_time);
+                FT_STATUS_INC(FT_NUM_BASEMENTS_FETCHED_WRITE, 1);
+                FT_STATUS_INC(FT_BYTES_BASEMENTS_FETCHED_WRITE, bfe->bytes_read);
+                FT_STATUS_INC(FT_TOKUTIME_BASEMENTS_FETCHED_WRITE, bfe->io_time);
             }
         } else if (childnum == bfe->child_to_read) {
             if (state == PT_COMPRESSED) {
-                STATUS_INC(FT_NUM_BASEMENTS_DECOMPRESSED_NORMAL, 1);
+                FT_STATUS_INC(FT_NUM_BASEMENTS_DECOMPRESSED_NORMAL, 1);
             } else {
-                STATUS_INC(FT_NUM_BASEMENTS_FETCHED_NORMAL, 1);
-                STATUS_INC(FT_BYTES_BASEMENTS_FETCHED_NORMAL, bfe->bytes_read);
-                STATUS_INC(FT_TOKUTIME_BASEMENTS_FETCHED_NORMAL, bfe->io_time);
+                FT_STATUS_INC(FT_NUM_BASEMENTS_FETCHED_NORMAL, 1);
+                FT_STATUS_INC(FT_BYTES_BASEMENTS_FETCHED_NORMAL, bfe->bytes_read);
+                FT_STATUS_INC(FT_TOKUTIME_BASEMENTS_FETCHED_NORMAL, bfe->io_time);
             }
         } else {
             if (state == PT_COMPRESSED) {
-                STATUS_INC(FT_NUM_BASEMENTS_DECOMPRESSED_AGGRESSIVE, 1);
+                FT_STATUS_INC(FT_NUM_BASEMENTS_DECOMPRESSED_AGGRESSIVE, 1);
             } else {
-                STATUS_INC(FT_NUM_BASEMENTS_FETCHED_AGGRESSIVE, 1);
-                STATUS_INC(FT_BYTES_BASEMENTS_FETCHED_AGGRESSIVE, bfe->bytes_read);
-                STATUS_INC(FT_TOKUTIME_BASEMENTS_FETCHED_AGGRESSIVE, bfe->io_time);
+                FT_STATUS_INC(FT_NUM_BASEMENTS_FETCHED_AGGRESSIVE, 1);
+                FT_STATUS_INC(FT_BYTES_BASEMENTS_FETCHED_AGGRESSIVE, bfe->bytes_read);
+                FT_STATUS_INC(FT_TOKUTIME_BASEMENTS_FETCHED_AGGRESSIVE, bfe->io_time);
             }
         }
     }
     else {
         if (bfe->type == ftnode_fetch_prefetch) {
             if (state == PT_COMPRESSED) {
-                STATUS_INC(FT_NUM_MSG_BUFFER_DECOMPRESSED_PREFETCH, 1);
+                FT_STATUS_INC(FT_NUM_MSG_BUFFER_DECOMPRESSED_PREFETCH, 1);
             } else {
-                STATUS_INC(FT_NUM_MSG_BUFFER_FETCHED_PREFETCH, 1);
-                STATUS_INC(FT_BYTES_MSG_BUFFER_FETCHED_PREFETCH, bfe->bytes_read);
-                STATUS_INC(FT_TOKUTIME_MSG_BUFFER_FETCHED_PREFETCH, bfe->io_time);
+                FT_STATUS_INC(FT_NUM_MSG_BUFFER_FETCHED_PREFETCH, 1);
+                FT_STATUS_INC(FT_BYTES_MSG_BUFFER_FETCHED_PREFETCH, bfe->bytes_read);
+                FT_STATUS_INC(FT_TOKUTIME_MSG_BUFFER_FETCHED_PREFETCH, bfe->io_time);
             }
         } else if (bfe->type == ftnode_fetch_all) {
             if (state == PT_COMPRESSED) {
-                STATUS_INC(FT_NUM_MSG_BUFFER_DECOMPRESSED_WRITE, 1);
+                FT_STATUS_INC(FT_NUM_MSG_BUFFER_DECOMPRESSED_WRITE, 1);
             } else {
-                STATUS_INC(FT_NUM_MSG_BUFFER_FETCHED_WRITE, 1);
-                STATUS_INC(FT_BYTES_MSG_BUFFER_FETCHED_WRITE, bfe->bytes_read);
-                STATUS_INC(FT_TOKUTIME_MSG_BUFFER_FETCHED_WRITE, bfe->io_time);
+                FT_STATUS_INC(FT_NUM_MSG_BUFFER_FETCHED_WRITE, 1);
+                FT_STATUS_INC(FT_BYTES_MSG_BUFFER_FETCHED_WRITE, bfe->bytes_read);
+                FT_STATUS_INC(FT_TOKUTIME_MSG_BUFFER_FETCHED_WRITE, bfe->io_time);
             }
         } else if (childnum == bfe->child_to_read) {
             if (state == PT_COMPRESSED) {
-                STATUS_INC(FT_NUM_MSG_BUFFER_DECOMPRESSED_NORMAL, 1);
+                FT_STATUS_INC(FT_NUM_MSG_BUFFER_DECOMPRESSED_NORMAL, 1);
             } else {
-                STATUS_INC(FT_NUM_MSG_BUFFER_FETCHED_NORMAL, 1);
-                STATUS_INC(FT_BYTES_MSG_BUFFER_FETCHED_NORMAL, bfe->bytes_read);
-                STATUS_INC(FT_TOKUTIME_MSG_BUFFER_FETCHED_NORMAL, bfe->io_time);
+                FT_STATUS_INC(FT_NUM_MSG_BUFFER_FETCHED_NORMAL, 1);
+                FT_STATUS_INC(FT_BYTES_MSG_BUFFER_FETCHED_NORMAL, bfe->bytes_read);
+                FT_STATUS_INC(FT_TOKUTIME_MSG_BUFFER_FETCHED_NORMAL, bfe->io_time);
             }
         } else {
             if (state == PT_COMPRESSED) {
-                STATUS_INC(FT_NUM_MSG_BUFFER_DECOMPRESSED_AGGRESSIVE, 1);
+                FT_STATUS_INC(FT_NUM_MSG_BUFFER_DECOMPRESSED_AGGRESSIVE, 1);
             } else {
-                STATUS_INC(FT_NUM_MSG_BUFFER_FETCHED_AGGRESSIVE, 1);
-                STATUS_INC(FT_BYTES_MSG_BUFFER_FETCHED_AGGRESSIVE, bfe->bytes_read);
-                STATUS_INC(FT_TOKUTIME_MSG_BUFFER_FETCHED_AGGRESSIVE, bfe->io_time);
+                FT_STATUS_INC(FT_NUM_MSG_BUFFER_FETCHED_AGGRESSIVE, 1);
+                FT_STATUS_INC(FT_BYTES_MSG_BUFFER_FETCHED_AGGRESSIVE, bfe->bytes_read);
+                FT_STATUS_INC(FT_TOKUTIME_MSG_BUFFER_FETCHED_AGGRESSIVE, bfe->io_time);
             }
         }
     }
@@ -1377,46 +1161,46 @@ ft_status_update_partial_fetch_reason(
 
 void toku_ft_status_update_serialize_times(FTNODE node, tokutime_t serialize_time, tokutime_t compress_time) {
     if (node->height == 0) {
-        STATUS_INC(FT_LEAF_SERIALIZE_TOKUTIME, serialize_time);
-        STATUS_INC(FT_LEAF_COMPRESS_TOKUTIME, compress_time);
+        FT_STATUS_INC(FT_LEAF_SERIALIZE_TOKUTIME, serialize_time);
+        FT_STATUS_INC(FT_LEAF_COMPRESS_TOKUTIME, compress_time);
     } else {
-        STATUS_INC(FT_NONLEAF_SERIALIZE_TOKUTIME, serialize_time);
-        STATUS_INC(FT_NONLEAF_COMPRESS_TOKUTIME, compress_time);
+        FT_STATUS_INC(FT_NONLEAF_SERIALIZE_TOKUTIME, serialize_time);
+        FT_STATUS_INC(FT_NONLEAF_COMPRESS_TOKUTIME, compress_time);
     }
 }
 
 void toku_ft_status_update_deserialize_times(FTNODE node, tokutime_t deserialize_time, tokutime_t decompress_time) {
     if (node->height == 0) {
-        STATUS_INC(FT_LEAF_DESERIALIZE_TOKUTIME, deserialize_time);
-        STATUS_INC(FT_LEAF_DECOMPRESS_TOKUTIME, decompress_time);
+        FT_STATUS_INC(FT_LEAF_DESERIALIZE_TOKUTIME, deserialize_time);
+        FT_STATUS_INC(FT_LEAF_DECOMPRESS_TOKUTIME, decompress_time);
     } else {
-        STATUS_INC(FT_NONLEAF_DESERIALIZE_TOKUTIME, deserialize_time);
-        STATUS_INC(FT_NONLEAF_DECOMPRESS_TOKUTIME, decompress_time);
+        FT_STATUS_INC(FT_NONLEAF_DESERIALIZE_TOKUTIME, deserialize_time);
+        FT_STATUS_INC(FT_NONLEAF_DECOMPRESS_TOKUTIME, decompress_time);
     }
 }
 
 void toku_ft_status_note_msn_discard(void) {
-    STATUS_INC(FT_MSN_DISCARDS, 1);
+    FT_STATUS_INC(FT_MSN_DISCARDS, 1);
 }
 
 void toku_ft_status_note_update(bool broadcast) {
     if (broadcast) {
-        STATUS_INC(FT_UPDATES_BROADCAST, 1);
+        FT_STATUS_INC(FT_UPDATES_BROADCAST, 1);
     } else {
-        STATUS_INC(FT_UPDATES, 1);
+        FT_STATUS_INC(FT_UPDATES, 1);
     }
 }
 
 void toku_ft_status_note_msg_bytes_out(size_t buffsize) {
-    STATUS_INC(FT_MSG_BYTES_OUT, buffsize);
-    STATUS_INC(FT_MSG_BYTES_CURR, -buffsize);
+    FT_STATUS_INC(FT_MSG_BYTES_OUT, buffsize);
+    FT_STATUS_INC(FT_MSG_BYTES_CURR, -buffsize);
 }
 void toku_ft_status_note_ftnode(int height, bool created) {
     if (created) {
         if (height == 0) {
-            STATUS_INC(FT_CREATE_LEAF, 1);
+            FT_STATUS_INC(FT_CREATE_LEAF, 1);
         } else {
-            STATUS_INC(FT_CREATE_NONLEAF, 1);
+            FT_STATUS_INC(FT_CREATE_NONLEAF, 1);
         }
     } else {
         // created = false means destroyed
@@ -1612,11 +1396,11 @@ static void inject_message_in_locked_node(
     // update some status variables
     if (node->height != 0) {
         size_t msgsize = msg.total_size();
-        STATUS_INC(FT_MSG_BYTES_IN, msgsize);
-        STATUS_INC(FT_MSG_BYTES_CURR, msgsize);
-        STATUS_INC(FT_MSG_NUM, 1);
+        FT_STATUS_INC(FT_MSG_BYTES_IN, msgsize);
+        FT_STATUS_INC(FT_MSG_BYTES_CURR, msgsize);
+        FT_STATUS_INC(FT_MSG_NUM, 1);
         if (ft_msg_type_applies_all(msg.type())) {
-            STATUS_INC(FT_MSG_NUM_BROADCAST, 1);
+            FT_STATUS_INC(FT_MSG_NUM_BROADCAST, 1);
         }
     }
 
@@ -1624,13 +1408,13 @@ static void inject_message_in_locked_node(
     paranoid_invariant(msg_with_msn.msn().msn == node->max_msn_applied_to_node_on_disk.msn);
 
     if (node->blocknum.b == ft->rightmost_blocknum.b) {
-        if (toku_drd_unsafe_fetch(&ft->seqinsert_score) < FT_SEQINSERT_SCORE_THRESHOLD) {
+        if (toku_unsafe_fetch(&ft->seqinsert_score) < FT_SEQINSERT_SCORE_THRESHOLD) {
             // we promoted to the rightmost leaf node and the seqinsert score has not yet saturated.
             toku_sync_fetch_and_add(&ft->seqinsert_score, 1);
         }
-    } else if (toku_drd_unsafe_fetch(&ft->seqinsert_score) != 0) {
+    } else if (toku_unsafe_fetch(&ft->seqinsert_score) != 0) {
         // we promoted to something other than the rightmost leaf node and the score should reset
-        toku_drd_unsafe_set(&ft->seqinsert_score, static_cast<uint32_t>(0));
+        toku_unsafe_set(&ft->seqinsert_score, static_cast<uint32_t>(0));
     }
 
     // if we call toku_ft_flush_some_child, then that function unpins the root
@@ -1792,16 +1576,16 @@ static inline bool should_inject_in_node(seqinsert_loc loc, int height, int dept
 static void ft_verify_or_set_rightmost_blocknum(FT ft, BLOCKNUM b)
 // Given: 'b', the _definitive_ and constant rightmost blocknum of 'ft'
 {
-    if (toku_drd_unsafe_fetch(&ft->rightmost_blocknum.b) == RESERVED_BLOCKNUM_NULL) {
+    if (toku_unsafe_fetch(&ft->rightmost_blocknum.b) == RESERVED_BLOCKNUM_NULL) {
         toku_ft_lock(ft);
         if (ft->rightmost_blocknum.b == RESERVED_BLOCKNUM_NULL) {
-            toku_drd_unsafe_set(&ft->rightmost_blocknum, b);
+            toku_unsafe_set(&ft->rightmost_blocknum, b);
         }
         toku_ft_unlock(ft);
     }
     // The rightmost blocknum only transitions from RESERVED_BLOCKNUM_NULL to non-null.
     // If it's already set, verify that the stored value is consistent with 'b'
-    invariant(toku_drd_unsafe_fetch(&ft->rightmost_blocknum.b) == b.b);
+    invariant(toku_unsafe_fetch(&ft->rightmost_blocknum.b) == b.b);
 }
 
 bool toku_bnc_should_promote(FT ft, NONLEAF_CHILDINFO bnc) {
@@ -1847,15 +1631,15 @@ static void push_something_in_subtree(
     if (should_inject_in_node(loc, subtree_root->height, depth)) {
         switch (depth) {
         case 0:
-            STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_0, 1); break;
+            FT_STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_0, 1); break;
         case 1:
-            STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_1, 1); break;
+            FT_STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_1, 1); break;
         case 2:
-            STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_2, 1); break;
+            FT_STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_2, 1); break;
         case 3:
-            STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_3, 1); break;
+            FT_STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_3, 1); break;
         default:
-            STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_GT3, 1); break;
+            FT_STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_GT3, 1); break;
         }
         // If the target node is a non-root leaf node on the right extreme,
         // set the rightmost blocknum. We know there are no messages above us
@@ -1880,7 +1664,7 @@ static void push_something_in_subtree(
 
         if (toku_bnc_n_entries(bnc) > 0) {
             // The buffer is non-empty, give up on promoting.
-            STATUS_INC(FT_PRO_NUM_STOP_NONEMPTY_BUF, 1);
+            FT_STATUS_INC(FT_PRO_NUM_STOP_NONEMPTY_BUF, 1);
             goto relock_and_push_here;
         }
 
@@ -1895,7 +1679,7 @@ static void push_something_in_subtree(
 
         if (next_loc == NEITHER_EXTREME && subtree_root->height <= 1) {
             // Never promote to leaf nodes except on the edges
-            STATUS_INC(FT_PRO_NUM_STOP_H1, 1);
+            FT_STATUS_INC(FT_PRO_NUM_STOP_H1, 1);
             goto relock_and_push_here;
         }
 
@@ -1934,7 +1718,7 @@ static void push_something_in_subtree(
                     r = toku_maybe_pin_ftnode_clean(ft, child_blocknum, child_fullhash, lock_type, &child);
                     if (r != 0) {
                         // We couldn't get the child cheaply, so give up on promoting.
-                        STATUS_INC(FT_PRO_NUM_STOP_LOCK_CHILD, 1);
+                        FT_STATUS_INC(FT_PRO_NUM_STOP_LOCK_CHILD, 1);
                         goto relock_and_push_here;
                     }
                     if (toku_ftnode_fully_in_memory(child)) {
@@ -1945,7 +1729,7 @@ static void push_something_in_subtree(
                         }
                     } else {
                         // We got the child, but it's not fully in memory.  Give up on promoting.
-                        STATUS_INC(FT_PRO_NUM_STOP_CHILD_INMEM, 1);
+                        FT_STATUS_INC(FT_PRO_NUM_STOP_CHILD_INMEM, 1);
                         goto unlock_child_and_push_here;
                     }
                 }
@@ -1976,7 +1760,7 @@ static void push_something_in_subtree(
                 return;
             }
 
-            STATUS_INC(FT_PRO_NUM_DIDNT_WANT_PROMOTE, 1);
+            FT_STATUS_INC(FT_PRO_NUM_DIDNT_WANT_PROMOTE, 1);
         unlock_child_and_push_here:
             // We locked the child, but we decided not to promote.
             // Unlock the child, and fall through to the next case.
@@ -1994,15 +1778,15 @@ static void push_something_in_subtree(
             toku_unpin_ftnode_read_only(ft, subtree_root);
             switch (depth) {
             case 0:
-                STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_0, 1); break;
+                FT_STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_0, 1); break;
             case 1:
-                STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_1, 1); break;
+                FT_STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_1, 1); break;
             case 2:
-                STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_2, 1); break;
+                FT_STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_2, 1); break;
             case 3:
-                STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_3, 1); break;
+                FT_STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_3, 1); break;
             default:
-                STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_GT3, 1); break;
+                FT_STATUS_INC(FT_PRO_NUM_INJECT_DEPTH_GT3, 1); break;
             }
             inject_message_at_this_blocknum(ft, subtree_root_blocknum, subtree_root_fullhash, msg, flow_deltas, gc_info);
         }
@@ -2097,7 +1881,7 @@ void toku_ft_root_put_msg(
             // do the injection.
             toku_unpin_ftnode(ft, node);
             lock_type = PL_READ;
-            STATUS_INC(FT_PRO_NUM_ROOT_SPLIT, 1);
+            FT_STATUS_INC(FT_PRO_NUM_ROOT_SPLIT, 1);
             goto change_lock_type;
         }
         break;
@@ -2114,7 +1898,7 @@ void toku_ft_root_put_msg(
     if (node->height == 0 || !ft_msg_type_applies_once(msg.type())) {
         // If the root's a leaf or we're injecting a broadcast, drop the read lock and inject here.
         toku_unpin_ftnode_read_only(ft, node);
-        STATUS_INC(FT_PRO_NUM_ROOT_H0_INJECT, 1);
+        FT_STATUS_INC(FT_PRO_NUM_ROOT_H0_INJECT, 1);
         inject_message_at_this_blocknum(ft, root_key, fullhash, msg, flow_deltas, gc_info);
     } else if (node->height > 1) {
         // If the root's above height 1, we are definitely eligible for promotion.
@@ -2129,7 +1913,7 @@ void toku_ft_root_put_msg(
         } else {
             // At height 1 in the middle, don't promote, drop the read lock and inject here.
             toku_unpin_ftnode_read_only(ft, node);
-            STATUS_INC(FT_PRO_NUM_ROOT_H1_INJECT, 1);
+            FT_STATUS_INC(FT_PRO_NUM_ROOT_H1_INJECT, 1);
             inject_message_at_this_blocknum(ft, root_key, fullhash, msg, flow_deltas, gc_info);
         }
     }
@@ -2285,7 +2069,7 @@ static int ft_maybe_insert_into_rightmost_leaf(FT ft, DBT *key, DBT *val, XIDS m
 
     // Don't do the optimization if our heurstic suggests that
     // insertion pattern is not sequential.
-    if (toku_drd_unsafe_fetch(&ft->seqinsert_score) < FT_SEQINSERT_SCORE_THRESHOLD) {
+    if (toku_unsafe_fetch(&ft->seqinsert_score) < FT_SEQINSERT_SCORE_THRESHOLD) {
         goto cleanup;
     }
 
@@ -2311,7 +2095,7 @@ static int ft_maybe_insert_into_rightmost_leaf(FT ft, DBT *key, DBT *val, XIDS m
     // take care of it. This also ensures that if any of our ancestors are reactive,
     // they'll be taken care of too.
     if (toku_ftnode_get_leaf_reactivity(rightmost_leaf, ft->h->nodesize) != RE_STABLE) {
-        STATUS_INC(FT_PRO_RIGHTMOST_LEAF_SHORTCUT_FAIL_REACTIVE, 1);
+        FT_STATUS_INC(FT_PRO_RIGHTMOST_LEAF_SHORTCUT_FAIL_REACTIVE, 1);
         goto cleanup;
     }
 
@@ -2332,7 +2116,7 @@ static int ft_maybe_insert_into_rightmost_leaf(FT ft, DBT *key, DBT *val, XIDS m
                                                 unique ? &nondeleted_key_found : nullptr,
                                                 &target_childnum);
     if (relative_pos >= 0) {
-        STATUS_INC(FT_PRO_RIGHTMOST_LEAF_SHORTCUT_SUCCESS, 1);
+        FT_STATUS_INC(FT_PRO_RIGHTMOST_LEAF_SHORTCUT_SUCCESS, 1);
         if (unique && nondeleted_key_found) {
             r = DB_KEYEXIST;
         } else {
@@ -2341,7 +2125,7 @@ static int ft_maybe_insert_into_rightmost_leaf(FT ft, DBT *key, DBT *val, XIDS m
             r = 0;
         }
     } else {
-        STATUS_INC(FT_PRO_RIGHTMOST_LEAF_SHORTCUT_FAIL_POS, 1);
+        FT_STATUS_INC(FT_PRO_RIGHTMOST_LEAF_SHORTCUT_FAIL_POS, 1);
         r = -1;
     }
 
@@ -2934,7 +2718,7 @@ void toku_ft_change_descriptor(
     new_d.dbt = *new_descriptor;
     toku_ft_update_descriptor(ft_h->ft, &new_d);
     // very infrequent operation, worth precise threadsafe count
-    STATUS_INC(FT_DESCRIPTOR_SET, 1);
+    FT_STATUS_INC(FT_DESCRIPTOR_SET, 1);
 
     if (update_cmp_descriptor) {
         toku_ft_update_cmp_descriptor(ft_h->ft);
@@ -3377,7 +3161,7 @@ ok: ;
 
     if (toku_ft_cursor_is_leaf_mode(ftcursor))
         goto got_a_good_value;        // leaf mode cursors see all leaf entries
-    if (le_val_is_del(le, ftcursor->is_snapshot_read, ftcursor->ttxn)) {
+    if (le_val_is_del(le, ftcursor->read_type, ftcursor->ttxn)) {
         // Provisionally deleted stuff is gone.
         // So we need to scan in the direction to see if we can find something.
         // Every 64 deleted leaf entries check if the leaf's key is within the search bounds.
@@ -3386,7 +3170,7 @@ ok: ;
             case FT_SEARCH_LEFT:
                 idx++;
                 if (idx >= bn->data_buffer.num_klpairs() || ((n_deleted % 64) == 0 && !search_continue(search, key, keylen))) {
-                    STATUS_INC(FT_CURSOR_SKIP_DELETED_LEAF_ENTRY, n_deleted);
+                    FT_STATUS_INC(FT_CURSOR_SKIP_DELETED_LEAF_ENTRY, n_deleted);
                     if (ftcursor->interrupt_cb && ftcursor->interrupt_cb(ftcursor->interrupt_cb_extra, n_deleted)) {
                         return TOKUDB_INTERRUPTED;
                     }
@@ -3395,7 +3179,7 @@ ok: ;
                 break;
             case FT_SEARCH_RIGHT:
                 if (idx == 0) {
-                    STATUS_INC(FT_CURSOR_SKIP_DELETED_LEAF_ENTRY, n_deleted);
+                    FT_STATUS_INC(FT_CURSOR_SKIP_DELETED_LEAF_ENTRY, n_deleted);
                     if (ftcursor->interrupt_cb && ftcursor->interrupt_cb(ftcursor->interrupt_cb_extra, n_deleted)) {
                         return TOKUDB_INTERRUPTED;
                     }
@@ -3408,8 +3192,8 @@ ok: ;
             }
             r = bn->data_buffer.fetch_klpair(idx, &le, &keylen, &key);
             assert_zero(r); // we just validated the index
-            if (!le_val_is_del(le, ftcursor->is_snapshot_read, ftcursor->ttxn)) {
-                STATUS_INC(FT_CURSOR_SKIP_DELETED_LEAF_ENTRY, n_deleted);
+            if (!le_val_is_del(le, ftcursor->read_type, ftcursor->ttxn)) {
+                FT_STATUS_INC(FT_CURSOR_SKIP_DELETED_LEAF_ENTRY, n_deleted);
                 if (ftcursor->interrupt_cb)
                     ftcursor->interrupt_cb(ftcursor->interrupt_cb_extra, n_deleted);
                 goto got_a_good_value;
@@ -3422,7 +3206,7 @@ got_a_good_value:
         void *val;
 
         le_extract_val(le, toku_ft_cursor_is_leaf_mode(ftcursor),
-                       ftcursor->is_snapshot_read, ftcursor->ttxn,
+                       ftcursor->read_type, ftcursor->ttxn,
                        &vallen, &val);
         r = toku_ft_cursor_check_restricted_range(ftcursor, key, keylen);
         if (r == 0) {
@@ -3948,12 +3732,12 @@ try_again:
     {   // accounting (to detect and measure thrashing)
         uint retrycount = trycount - 1;         // how many retries were needed?
         if (retrycount) {
-            STATUS_INC(FT_TOTAL_RETRIES, retrycount);
+            FT_STATUS_INC(FT_TOTAL_RETRIES, retrycount);
         }
         if (retrycount > tree_height) {         // if at least one node was read from disk more than once
-            STATUS_INC(FT_SEARCH_TRIES_GT_HEIGHT, 1);
+            FT_STATUS_INC(FT_SEARCH_TRIES_GT_HEIGHT, 1);
             if (retrycount > (tree_height+3))
-                STATUS_INC(FT_SEARCH_TRIES_GT_HEIGHTPLUS3, 1);
+                FT_STATUS_INC(FT_SEARCH_TRIES_GT_HEIGHTPLUS3, 1);
         }
     }
     return r;
@@ -4538,9 +4322,8 @@ int toku_ft_layer_init(void) {
     if (r) { goto exit; }
 
     partitioned_counters_init();
-    status_init();
-    txn_status_init();
-    toku_ule_status_init();
+    toku_status_init();
+    toku_context_status_init();
     toku_checkpoint_init();
     toku_ft_serialize_layer_init();
     toku_mutex_init(&ft_open_close_lock, NULL);
@@ -4553,10 +4336,8 @@ void toku_ft_layer_destroy(void) {
     toku_mutex_destroy(&ft_open_close_lock);
     toku_ft_serialize_layer_destroy();
     toku_checkpoint_destroy();
-    status_destroy();
-    txn_status_destroy();
-    toku_ule_status_destroy();
     toku_context_status_destroy();
+    toku_status_destroy();
     partitioned_counters_destroy();
     toku_scoped_malloc_destroy();
     //Portability must be cleaned up last
@@ -4744,5 +4525,3 @@ void
 toku_ft_helgrind_ignore(void) {
     TOKU_VALGRIND_HG_DISABLE_CHECKING(&ft_status, sizeof ft_status);
 }
-
-#undef STATUS_INC

@@ -1,96 +1,40 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 // vim: ft=cpp:expandtab:ts=8:sw=4:softtabstop=4:
 #ident "$Id$"
-/*
-COPYING CONDITIONS NOTICE:
-
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of version 2 of the GNU General Public License as
-  published by the Free Software Foundation, and provided that the
-  following conditions are met:
-
-      * Redistributions of source code must retain this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below).
-
-      * Redistributions in binary form must reproduce this COPYING
-        CONDITIONS NOTICE, the COPYRIGHT NOTICE (below), the
-        DISCLAIMER (below), the UNIVERSITY PATENT NOTICE (below), the
-        PATENT MARKING NOTICE (below), and the PATENT RIGHTS
-        GRANT (below) in the documentation and/or other materials
-        provided with the distribution.
-
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-  02110-1301, USA.
-
-COPYRIGHT NOTICE:
-
-  TokuFT, Tokutek Fractal Tree Indexing Library.
-  Copyright (C) 2007-2013 Tokutek, Inc.
-
-DISCLAIMER:
-
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
-
-UNIVERSITY PATENT NOTICE:
-
-  The technology is licensed by the Massachusetts Institute of
-  Technology, Rutgers State University of New Jersey, and the Research
-  Foundation of State University of New York at Stony Brook under
-  United States of America Serial No. 11/760379 and to the patents
-  and/or patent applications resulting from it.
-
-PATENT MARKING NOTICE:
-
-  This software is covered by US Patent No. 8,185,551.
-  This software is covered by US Patent No. 8,489,638.
-
-PATENT RIGHTS GRANT:
-
-  "THIS IMPLEMENTATION" means the copyrightable works distributed by
-  Tokutek as part of the Fractal Tree project.
-
-  "PATENT CLAIMS" means the claims of patents that are owned or
-  licensable by Tokutek, both currently or in the future; and that in
-  the absence of this license would be infringed by THIS
-  IMPLEMENTATION or by using or running THIS IMPLEMENTATION.
-
-  "PATENT CHALLENGE" shall mean a challenge to the validity,
-  patentability, enforceability and/or non-infringement of any of the
-  PATENT CLAIMS or otherwise opposing any of the PATENT CLAIMS.
-
-  Tokutek hereby grants to you, for the term and geographical scope of
-  the PATENT CLAIMS, a non-exclusive, no-charge, royalty-free,
-  irrevocable (except as stated in this section) patent license to
-  make, have made, use, offer to sell, sell, import, transfer, and
-  otherwise run, modify, and propagate the contents of THIS
-  IMPLEMENTATION, where such license applies only to the PATENT
-  CLAIMS.  This grant does not include claims that would be infringed
-  only as a consequence of further modifications of THIS
-  IMPLEMENTATION.  If you or your agent or licensee institute or order
-  or agree to the institution of patent litigation against any entity
-  (including a cross-claim or counterclaim in a lawsuit) alleging that
-  THIS IMPLEMENTATION constitutes direct or contributory patent
-  infringement, or inducement of patent infringement, then any rights
-  granted to you under this License shall terminate as of the date
-  such litigation is filed.  If you or your agent or exclusive
-  licensee institute or order or agree to the institution of a PATENT
-  CHALLENGE, then Tokutek may terminate any rights granted to you
-  under this License.
-*/
-
-#ident "Copyright (c) 2007-2013 Tokutek Inc.  All rights reserved."
-#ident "The technology is licensed by the Massachusetts Institute of Technology, Rutgers State University of New Jersey, and the Research Foundation of State University of New York at Stony Brook under United States of America Serial No. 11/760379 and to the patents and/or patent applications resulting from it."
+/*======
+This file is part of PerconaFT.
 
 
-#include <config.h>
+Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved.
+
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License, version 2,
+    as published by the Free Software Foundation.
+
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+
+----------------------------------------
+
+    PerconaFT is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License, version 3,
+    as published by the Free Software Foundation.
+
+    PerconaFT is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with PerconaFT.  If not, see <http://www.gnu.org/licenses/>.
+======= */
+
+#ident "Copyright (c) 2006, 2015, Percona and/or its affiliates. All rights reserved."
 
 #include "ft/cachetable/cachetable.h"
 #include "ft/cachetable/checkpoint.h"
@@ -424,7 +368,7 @@ static int toku_recover_begin_checkpoint (struct logtype_begin_checkpoint *l, RE
         r = 0; // ignore it (log only has a begin checkpoint)
         break;
     default:
-        fprintf(stderr, "TokuFT recovery %s: %d Unknown checkpoint state %d\n", __FILE__, __LINE__, (int)renv->ss.ss);
+        fprintf(stderr, "PerconaFT recovery %s: %d Unknown checkpoint state %d\n", __FILE__, __LINE__, (int)renv->ss.ss);
         abort();
         break;
     }
@@ -434,7 +378,7 @@ static int toku_recover_begin_checkpoint (struct logtype_begin_checkpoint *l, RE
 static int toku_recover_backward_begin_checkpoint (struct logtype_begin_checkpoint *l, RECOVER_ENV renv) {
     int r;
     time_t tnow = time(NULL);
-    fprintf(stderr, "%.24s TokuFT recovery bw_begin_checkpoint at %" PRIu64 " timestamp %" PRIu64 " (%s)\n", ctime(&tnow), l->lsn.lsn, l->timestamp, recover_state(renv));
+    fprintf(stderr, "%.24s PerconaFT recovery bw_begin_checkpoint at %" PRIu64 " timestamp %" PRIu64 " (%s)\n", ctime(&tnow), l->lsn.lsn, l->timestamp, recover_state(renv));
     switch (renv->ss.ss) {
     case BACKWARD_NEWER_CHECKPOINT_END:
         // incomplete checkpoint, nothing to do
@@ -446,13 +390,13 @@ static int toku_recover_backward_begin_checkpoint (struct logtype_begin_checkpoi
         renv->ss.checkpoint_begin_timestamp = l->timestamp;
         renv->goforward = true;
         tnow = time(NULL);
-        fprintf(stderr, "%.24s TokuFT recovery turning around at begin checkpoint %" PRIu64 " time %" PRIu64 "\n", 
+        fprintf(stderr, "%.24s PerconaFT recovery turning around at begin checkpoint %" PRIu64 " time %" PRIu64 "\n", 
                 ctime(&tnow), l->lsn.lsn, 
                 renv->ss.checkpoint_end_timestamp - renv->ss.checkpoint_begin_timestamp);
         r = 0;
         break;
     default:
-        fprintf(stderr, "TokuFT recovery %s: %d Unknown checkpoint state %d\n", __FILE__, __LINE__, (int)renv->ss.ss);
+        fprintf(stderr, "PerconaFT recovery %s: %d Unknown checkpoint state %d\n", __FILE__, __LINE__, (int)renv->ss.ss);
         abort();
         break;
     }
@@ -482,7 +426,7 @@ static int toku_recover_end_checkpoint (struct logtype_end_checkpoint *l, RECOVE
 
 static int toku_recover_backward_end_checkpoint (struct logtype_end_checkpoint *l, RECOVER_ENV renv) {
     time_t tnow = time(NULL);
-    fprintf(stderr, "%.24s TokuFT recovery bw_end_checkpoint at %" PRIu64 " timestamp %" PRIu64 " xid %" PRIu64 " (%s)\n", ctime(&tnow), l->lsn.lsn, l->timestamp, l->lsn_begin_checkpoint.lsn, recover_state(renv));
+    fprintf(stderr, "%.24s PerconaFT recovery bw_end_checkpoint at %" PRIu64 " timestamp %" PRIu64 " xid %" PRIu64 " (%s)\n", ctime(&tnow), l->lsn.lsn, l->timestamp, l->lsn_begin_checkpoint.lsn, recover_state(renv));
     switch (renv->ss.ss) {
     case BACKWARD_NEWER_CHECKPOINT_END:
         renv->ss.ss = BACKWARD_BETWEEN_CHECKPOINT_BEGIN_END;
@@ -491,12 +435,12 @@ static int toku_recover_backward_end_checkpoint (struct logtype_end_checkpoint *
         renv->ss.checkpoint_end_timestamp = l->timestamp;
         return 0;
     case BACKWARD_BETWEEN_CHECKPOINT_BEGIN_END:
-        fprintf(stderr, "TokuFT recovery %s:%d Should not see two end_checkpoint log entries without an intervening begin_checkpoint\n", __FILE__, __LINE__);
+        fprintf(stderr, "PerconaFT recovery %s:%d Should not see two end_checkpoint log entries without an intervening begin_checkpoint\n", __FILE__, __LINE__);
         abort();
     default:
         break;
     }
-    fprintf(stderr, "TokuFT recovery %s: %d Unknown checkpoint state %d\n", __FILE__, __LINE__, (int)renv->ss.ss);
+    fprintf(stderr, "PerconaFT recovery %s: %d Unknown checkpoint state %d\n", __FILE__, __LINE__, (int)renv->ss.ss);
     abort();
 }
 
@@ -765,7 +709,7 @@ static void toku_recover_txn_progress(TOKU_TXN_PROGRESS txn_progress, void *extr
     time_t tnow = time(NULL);
     if (tnow - txn_progress_extra->tlast >= tokuft_recovery_progress_time) {
         txn_progress_extra->tlast = tnow;
-        fprintf(stderr, "%.24s TokuFT ", ctime(&tnow));
+        fprintf(stderr, "%.24s PerconaFT ", ctime(&tnow));
         if (txn_progress_extra->lsn.lsn != 0)
             fprintf(stderr, "lsn %" PRIu64 " ", txn_progress_extra->lsn.lsn);
         fprintf(stderr, "%s xid %" PRIu64 ":%" PRIu64 " ",
@@ -785,7 +729,7 @@ static int toku_recover_xcommit (struct logtype_xcommit *l, RECOVER_ENV renv) {
     assert(txn!=NULL);
 
     // commit the transaction
-    toku_txn_progress_extra extra = { time(NULL), l->lsn, "commit", l->xid };
+    toku_txn_progress_extra extra = { time(NULL), l->lsn, "commit", l->xid, 0 };
     int r = toku_txn_commit_with_lsn(txn, true, l->lsn, toku_recover_txn_progress, &extra);
     assert(r == 0);
 
@@ -828,7 +772,7 @@ static int toku_recover_xabort (struct logtype_xabort *l, RECOVER_ENV renv) {
     assert(txn!=NULL);
 
     // abort the transaction
-    toku_txn_progress_extra extra = { time(NULL), l->lsn, "abort", l->xid };
+    toku_txn_progress_extra extra = { time(NULL), l->lsn, "abort", l->xid, 0 };
     r = toku_txn_abort_with_lsn(txn, l->lsn, toku_recover_txn_progress, &extra);
     assert(r == 0);
 
@@ -864,7 +808,7 @@ static int toku_recover_fcreate (struct logtype_fcreate *l, RECOVER_ENV renv) {
     if (r != 0) {
         int er = get_error_errno();
         if (er != ENOENT) {
-            fprintf(stderr, "TokuFT recovery %s:%d unlink %s %d\n", __FUNCTION__, __LINE__, iname, er);
+            fprintf(stderr, "PerconaFT recovery %s:%d unlink %s %d\n", __FUNCTION__, __LINE__, iname, er);
             toku_free(iname);
             return r;
         }
@@ -1363,7 +1307,7 @@ static void recover_abort_live_txn(TOKUTXN txn) {
     // sanity check that the recursive call successfully NULLs out txn->child
     invariant(txn->child == NULL);
     // abort the transaction
-    toku_txn_progress_extra extra = { time(NULL), ZERO_LSN, "abort live", txn->txnid };
+    toku_txn_progress_extra extra = { time(NULL), ZERO_LSN, "abort live", txn->txnid, 0 };
     int r = toku_txn_abort_txn(txn, toku_recover_txn_progress, &extra);
     assert(r == 0);
     
@@ -1416,7 +1360,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
     struct log_entry *le = NULL;
     
     time_t tnow = time(NULL);
-    fprintf(stderr, "%.24s TokuFT recovery starting in env %s\n", ctime(&tnow), env_dir);
+    fprintf(stderr, "%.24s PerconaFT recovery starting in env %s\n", ctime(&tnow), env_dir);
 
     char org_wd[1000];
     {
@@ -1452,10 +1396,10 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
         toku_struct_stat buf;
         if (toku_stat(env_dir, &buf)!=0) {
             rr = get_error_errno();
-            fprintf(stderr, "%.24s TokuFT recovery error: directory does not exist: %s\n", ctime(&tnow), env_dir);
+            fprintf(stderr, "%.24s PerconaFT recovery error: directory does not exist: %s\n", ctime(&tnow), env_dir);
             goto errorexit;
         } else if (!S_ISDIR(buf.st_mode)) {
-            fprintf(stderr, "%.24s TokuFT recovery error: this file is supposed to be a directory, but is not: %s\n", ctime(&tnow), env_dir);
+            fprintf(stderr, "%.24s PerconaFT recovery error: this file is supposed to be a directory, but is not: %s\n", ctime(&tnow), env_dir);
             rr = ENOTDIR; goto errorexit;
         }
     }
@@ -1464,7 +1408,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
     tnow = time(NULL);
     time_t tlast;
     tlast = tnow;
-    fprintf(stderr, "%.24s TokuFT recovery scanning backward from %" PRIu64 "\n", ctime(&tnow), lastlsn.lsn);
+    fprintf(stderr, "%.24s PerconaFT recovery scanning backward from %" PRIu64 "\n", ctime(&tnow), lastlsn.lsn);
     for (unsigned i=0; 1; i++) {
 
         // get the previous log entry (first time gets the last one)
@@ -1484,7 +1428,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
             tnow = time(NULL);
             if (tnow - tlast >= tokuft_recovery_progress_time) {
                 thislsn = toku_log_entry_get_lsn(le);
-                fprintf(stderr, "%.24s TokuFT recovery scanning backward from %" PRIu64 " at %" PRIu64 " (%s)\n",
+                fprintf(stderr, "%.24s PerconaFT recovery scanning backward from %" PRIu64 " at %" PRIu64 " (%s)\n",
                         ctime(&tnow), lastlsn.lsn, thislsn.lsn, recover_state(renv));
                 tlast = tnow;
             }
@@ -1514,7 +1458,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
     assert(le);
     thislsn = toku_log_entry_get_lsn(le);
     tnow = time(NULL);
-    fprintf(stderr, "%.24s TokuFT recovery starts scanning forward to %" PRIu64 " from %" PRIu64 " left %" PRIu64 " (%s)\n",
+    fprintf(stderr, "%.24s PerconaFT recovery starts scanning forward to %" PRIu64 " from %" PRIu64 " left %" PRIu64 " (%s)\n",
             ctime(&tnow), lastlsn.lsn, thislsn.lsn, lastlsn.lsn - thislsn.lsn, recover_state(renv));
 
     for (unsigned i=0; 1; i++) {
@@ -1524,7 +1468,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
             tnow = time(NULL);
             if (tnow - tlast >= tokuft_recovery_progress_time) {
                 thislsn = toku_log_entry_get_lsn(le);
-                fprintf(stderr, "%.24s TokuFT recovery scanning forward to %" PRIu64 " at %" PRIu64 " left %" PRIu64 " (%s)\n",
+                fprintf(stderr, "%.24s PerconaFT recovery scanning forward to %" PRIu64 " at %" PRIu64 " left %" PRIu64 " (%s)\n",
                         ctime(&tnow), lastlsn.lsn, thislsn.lsn, lastlsn.lsn - thislsn.lsn, recover_state(renv));
                 tlast = tnow;
             }
@@ -1574,7 +1518,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
         uint32_t n = recover_get_num_live_txns(renv);
         if (n > 0) {
             tnow = time(NULL);
-            fprintf(stderr, "%.24s TokuFT recovery has %" PRIu32 " live transaction%s\n", ctime(&tnow), n, n > 1 ? "s" : "");
+            fprintf(stderr, "%.24s PerconaFT recovery has %" PRIu32 " live transaction%s\n", ctime(&tnow), n, n > 1 ? "s" : "");
         }
     }
     recover_abort_all_live_txns(renv);
@@ -1582,7 +1526,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
         uint32_t n = recover_get_num_live_txns(renv);
         if (n > 0) {
             tnow = time(NULL);
-            fprintf(stderr, "%.24s TokuFT recovery has %" PRIu32 " prepared transaction%s\n", ctime(&tnow), n, n > 1 ? "s" : "");
+            fprintf(stderr, "%.24s PerconaFT recovery has %" PRIu32 " prepared transaction%s\n", ctime(&tnow), n, n > 1 ? "s" : "");
         }
     }
 
@@ -1591,7 +1535,7 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
     n = file_map_get_num_dictionaries(&renv->fmap);
     if (n > 0) {
         tnow = time(NULL);
-        fprintf(stderr, "%.24s TokuFT recovery closing %" PRIu32 " dictionar%s\n", ctime(&tnow), n, n > 1 ? "ies" : "y");
+        fprintf(stderr, "%.24s PerconaFT recovery closing %" PRIu32 " dictionar%s\n", ctime(&tnow), n, n > 1 ? "ies" : "y");
     }
     file_map_close_dictionaries(&renv->fmap, lastlsn);
 
@@ -1603,17 +1547,17 @@ static int do_recovery(RECOVER_ENV renv, const char *env_dir, const char *log_di
 
     // checkpoint 
     tnow = time(NULL);
-    fprintf(stderr, "%.24s TokuFT recovery making a checkpoint\n", ctime(&tnow));
+    fprintf(stderr, "%.24s PerconaFT recovery making a checkpoint\n", ctime(&tnow));
     r = toku_checkpoint(renv->cp, renv->logger, NULL, NULL, NULL, NULL, RECOVERY_CHECKPOINT);
     assert(r == 0);
     tnow = time(NULL);
-    fprintf(stderr, "%.24s TokuFT recovery done\n", ctime(&tnow));
+    fprintf(stderr, "%.24s PerconaFT recovery done\n", ctime(&tnow));
 
     return 0;
 
  errorexit:
     tnow = time(NULL);
-    fprintf(stderr, "%.24s TokuFT recovery failed %d\n", ctime(&tnow), rr);
+    fprintf(stderr, "%.24s PerconaFT recovery failed %d\n", ctime(&tnow), rr);
 
     if (logcursor) {
         r = toku_logcursor_destroy(&logcursor);

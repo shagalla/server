@@ -10,8 +10,8 @@ drop table if exists t1,t2;
 enable_warnings;
 
 let $MYSQLD_DATADIR=`select @@datadir`;
-copy_file $MTR_SUITE_DIR/std_data/leak172_t1.data $MYSQLD_DATADIR/test/leak172_t1.data;
-copy_file $MTR_SUITE_DIR/std_data/leak172_t2.data $MYSQLD_DATADIR/test/leak172_t2.data;
+copy_file std_data/leak172_t1.data $MYSQLD_DATADIR/test/leak172_t1.data;
+copy_file std_data/leak172_t2.data $MYSQLD_DATADIR/test/leak172_t2.data;
 
 CREATE TABLE `t1` (
   `c4` int(11) DEFAULT NULL,
@@ -134,7 +134,7 @@ CREATE TABLE `t2` (
 LOAD DATA INFILE 'leak172_t1.data' INTO TABLE `t1` fields terminated by ',';
 
 connect(conn1,localhost,root,,);
-set session debug_dbug="+d,tokudb_end_bulk_insert_sleep";
+set session debug="+d,tokudb_end_bulk_insert_sleep";
 send LOAD DATA INFILE 'leak172_t2.data' INTO TABLE `t2` fields terminated by ',';
 
 connection default;

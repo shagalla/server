@@ -1419,7 +1419,7 @@ sync-relay-log 10000
 sync-relay-log-info 10000
 sysdate-is-now FALSE
 table-cache 431
-table-definition-cache 400
+table-definition-cache 615
 table-open-cache 431
 tc-heuristic-recover COMMIT
 thread-cache-size 0

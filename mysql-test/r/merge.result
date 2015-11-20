@@ -2546,6 +2546,7 @@ DROP TABLE t1;
 #
 drop table if exists t_parent;
 set @save_table_open_cache=@@global.table_open_cache;
+set @save_table_definition_cache=@@global.table_definition_cache;
 #
 # Set @@global.table_open_cache to minimum
 #
@@ -2553,6 +2554,7 @@ set @@global.table_open_cache=400;
 select @@table_open_cache;
 @@table_open_cache
 400
+set @@global.table_definition_cache=400;
 set @a=null;
 #
 # Create 400 merge children
@@ -2577,6 +2579,7 @@ deallocate prepare stmt;
 #
 drop table t_parent;
 set @@global.table_open_cache=@save_table_open_cache;
+set @@global.table_definition_cache=@save_table_definition_cache;
 DROP DATABASE IF EXISTS mysql_test1;
 CREATE DATABASE mysql_test1;
 CREATE TABLE t1 ... DATA DIRECTORY=... INDEX DIRECTORY=...

@@ -4413,6 +4413,8 @@ static int init_common_variables()
     }
     SYSVAR_AUTOSIZE(open_files_limit, files);
   }
+  if (IS_SYSVAR_AUTOSIZE(&tdc_size))
+    SYSVAR_AUTOSIZE(tdc_size, MY_MIN(400 + tc_size / 2, 2000));
   unireg_init(opt_specialflag); /* Set up extern variabels */
   if (!(my_default_lc_messages=
         my_locale_by_name(lc_messages)))
@@ -5623,12 +5625,6 @@ int mysqld_main(int argc, char **argv)
   my_timer_init(&sys_timer_info);
 
   int ho_error __attribute__((unused))= handle_early_options();
-
-  /* fix tdc_size */
-  if (IS_SYSVAR_AUTOSIZE(&tdc_size))
-  {
-    SYSVAR_AUTOSIZE(tdc_size, MY_MIN(400 + tdc_size / 2, 2000));
-  }
 
 #ifdef WITH_PERFSCHEMA_STORAGE_ENGINE
   if (ho_error == 0)

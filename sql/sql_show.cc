@@ -2122,7 +2122,7 @@ int show_create_table(THD *thd, TABLE_LIST *table_list, String *packet,
       uint part_syntax_len;
       char *part_syntax;
       String comment_start;
-      table->part_info->set_show_version_string(&comment_start);
+      comment_start.append(STRING_WITH_LEN("\n"));
       if ((part_syntax= generate_partition_syntax(table->part_info,
                                                   &part_syntax_len,
                                                   FALSE,
@@ -2131,8 +2131,7 @@ int show_create_table(THD *thd, TABLE_LIST *table_list, String *packet,
                                                   comment_start.c_ptr())))
       {
          packet->append(comment_start);
-         if (packet->append(part_syntax, part_syntax_len) ||
-             packet->append(STRING_WITH_LEN(" */")))
+         if (packet->append(part_syntax, part_syntax_len))
           error= 1;
          my_free(part_syntax);
       }

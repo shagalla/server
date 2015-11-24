@@ -7600,8 +7600,8 @@ struct my_option my_long_options[]=
    0, 0, 0, 0, 0, 0},
   {"verbose", 'v', "Used with --help option for detailed help.",
    &opt_verbose, &opt_verbose, 0, GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0},
-  {"version", 'V', "Output version information and exit.", 0, 0, 0, GET_NO_ARG,
-   NO_ARG, 0, 0, 0, 0, 0, 0},
+  {"version", 'V', "Output version information and exit.", 0, 0, 0, GET_STR,
+   OPT_ARG, 0, 0, 0, 0, 0, 0},
   {"plugin-load", OPT_PLUGIN_LOAD,
    "Semicolon-separated list of plugins to load, where each plugin is "
    "specified as ether a plugin_name=library_file pair or only a library_file. "
@@ -8943,8 +8943,13 @@ mysqld_get_one_option(int optid, const struct my_option *opt, char *argument)
 #include <sslopt-case.h>
 #ifndef EMBEDDED_LIBRARY
   case 'V':
-    print_version();
-    opt_abort= 1;                    // Abort after parsing all options
+    if (argument)
+      strmov(server_version, argument);
+    else
+    {
+      print_version();
+      opt_abort= 1;                    // Abort after parsing all options
+    }
     break;
 #endif /*EMBEDDED_LIBRARY*/
   case 'W':
@@ -9637,6 +9642,8 @@ static int get_options(int *argc_ptr, char ***argv_ptr)
 
 void set_server_version(void)
 {
+  if (*server_version)
+    return;
   char *end= strxmov(server_version, MYSQL_SERVER_VERSION,
                      MYSQL_SERVER_SUFFIX_STR, NullS);
 #ifdef EMBEDDED_LIBRARY

@@ -38,26 +38,27 @@
 #include <mysqld_error.h>
 #include <mysql/plugin_auth.h>
 #include <mysql.h>
+#include "server_plugin.h"
 
 
 #define TARGET_NAME_MAX 256
-#define MECH_MAX 30
+#define MECH_NAME_MAX 30
 
-/* First packet sent from server to client, contains target_name\0mech\0 */
-static char first_packet[TARGET_NAME_MAX + MECH_MAX +2];
+/* First packet sent from server to client, contains srv_target_name\0mech\0 */
+static char first_packet[TARGET_NAME_MAX + MECH_NAME_MAX +2];
 static int  first_packet_len;
 
 /* 
  Target name in GSSAPI/SSPI , for Kerberos it is service principal name
  (often user principal name of the server user will work)
 */
-static char  *target_name;
+char  *srv_target_name;
 
 /*
   Mechanism used by GSSAPI, as readable string
   Either "Kerberos" or "Negotiate" or empty string
 */
-static char *mech="";
+char *srv_mech_name="";
 unsigned long mech_index;
 static const char* mech_names[] = {
 	"Kerberos",
@@ -65,56 +66,33 @@ static const char* mech_names[] = {
 	NULL
 };
 
-extern int get_client_name(char *target_name, 
-  char *mech, 
+extern int auth_server(
   MYSQL_PLUGIN_VIO *vio, 
-  char *client_name,
-  size_t client_name_len,
-  int  use_full_client_name);
+  const char *username,
+  int  compare_full_name);
 
 /**
   The main server function of the GSSAPI plugin.
  */
 static int gssapi_auth(MYSQL_PLUGIN_VIO *vio, MYSQL_SERVER_AUTH_INFO *auth_info)
 {
-  int rc;
   int use_full_name= (auth_info->auth_string_length > 0);
   const char *requested_name = use_full_name?auth_info->auth_string:auth_info->user_name;
-  char *client_name= auth_info->external_user;
-  size_t client_name_len= sizeof(auth_info->external_user);
 
-  /* Send first packet with target name and mech */
+  /* Send first packet with target name and mech name */
   if (vio->write_packet(vio, first_packet, first_packet_len))
   {
     return CR_ERROR;
   }
- 
-  /* 
-     Retrieve client name, either single component or fully qualified
-  */
-  rc = get_client_name(target_name, mech, vio, client_name,client_name_len,use_full_name);
-  if(rc != CR_OK)
-    return rc;
-
-#ifdef _WIN32
-  rc= _stricmp(client_name,requested_name) == 0 ? CR_OK : CR_ERROR;
-#else
-  rc= strcmp(client_name, requested_name) == 0 ? CR_OK : CR_ERROR;
-#endif
-
-  if(rc != CR_OK)
-  {
-    my_printf_error(ER_UNKNOWN_ERROR,"GSSAPI name mismatch, got %s",MYF(0),client_name);
-  }
-  return rc;
+  return auth_server(vio, requested_name,use_full_name);
 }
 
 static int initialize_plugin(void *unused)
 {
-  mech = (char*)mech_names[mech_index];
-  strcpy(first_packet, target_name);
-  strcpy(first_packet + strlen(target_name) + 1,mech);
-  first_packet_len = strlen(target_name) + strlen(mech) + 2;
+  srv_mech_name = (char*)mech_names[mech_index];
+  strcpy(first_packet, srv_target_name);
+  strcpy(first_packet + strlen(srv_target_name) + 1,srv_mech_name);
+  first_packet_len = strlen(srv_target_name) + strlen(srv_mech_name) + 2;
   return 0;
 }
 
@@ -128,13 +106,13 @@ static TYPELIB mech_name_typelib = {
   NULL
 };
 /* system variable */
-static MYSQL_SYSVAR_STR(target_name, target_name,
+static MYSQL_SYSVAR_STR(srv_target_name, srv_target_name,
                         PLUGIN_VAR_RQCMDARG|PLUGIN_VAR_READONLY,
                         "GSSAPI target name - service principal name for Kerberos authentication.",
                         NULL, 
                         NULL,
                         "");
-static MYSQL_SYSVAR_ENUM(mech, mech_index,
+static MYSQL_SYSVAR_ENUM(mech_name, mech_index,
                         PLUGIN_VAR_RQCMDARG|PLUGIN_VAR_READONLY,
                         "GSSAPI mechanism : either Kerberos or Negotiate",
                         NULL, 
@@ -142,9 +120,9 @@ static MYSQL_SYSVAR_ENUM(mech, mech_index,
                         1,&mech_name_typelib);
 
 static struct st_mysql_sys_var *system_variables[]= {
-  MYSQL_SYSVAR(target_name),
+  MYSQL_SYSVAR(srv_target_name),
 #ifdef _WIN32
-  MYSQL_SYSVAR(mech),
+  MYSQL_SYSVAR(mech_name),
 #endif
   NULL
 };

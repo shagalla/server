@@ -1,4 +1,5 @@
 #include "sspi.h"
+#include "server_plugin.h"
 #include <mysql/plugin_auth.h>
 #include <my_sys.h>
 #include <mysqld_error.h>
@@ -28,7 +29,7 @@ static int get_client_name_from_context(CtxtHandle *ctxt,
     /* Extract user from Kerberos principal name user@realm */
     if(!use_full_name)
     {
-      p = strchr(native_names.sClientName,'@');
+      p = strrchr(native_names.sClientName,'@');
       if(p)
         *p = 0;
     }
@@ -40,7 +41,7 @@ static int get_client_name_from_context(CtxtHandle *ctxt,
     /* Extract user from Windows name realm\user */
     if(!use_full_name)
     {
-      p = strchr(names.sUserName,'\\');
+      p = strrchr(names.sUserName,'\\');
       if(!p)
         p = names.sUserName;
       else
@@ -63,12 +64,7 @@ static int get_client_name_from_context(CtxtHandle *ctxt,
 }
 
 
-int get_client_name(char *target_name, 
-  char *mech, 
-  MYSQL_PLUGIN_VIO *vio, 
-  char *client_name,
-  size_t client_name_len,
-  int  use_full_client_name)
+int auth_server(MYSQL_PLUGIN_VIO *vio, const char *username, int compare_full_name)
 {
   int ret;
   SECURITY_STATUS sspi_ret;
@@ -82,7 +78,7 @@ int get_client_name(char *target_name,
   SecBufferDesc outbuf_desc;
   SecBuffer     outbuf;
   PBYTE         out= NULL;
-
+  char client_name[MYSQL_USERNAME_LENGTH + 1];
 
   ret= CR_ERROR;
   SecInvalidateHandle(&cred);
@@ -96,7 +92,7 @@ int get_client_name(char *target_name,
   }
   sspi_ret= AcquireCredentialsHandle(
     NULL,
-    mech,
+    srv_mech_name,
     SECPKG_CRED_INBOUND,
     NULL,
     NULL,
@@ -169,10 +165,17 @@ int get_client_name(char *target_name,
     }
   } while (sspi_ret == SEC_I_CONTINUE_NEEDED);
 
-  /* Authentication done, now extract and compare user name */
-  ret= get_client_name_from_context(&ctxt,client_name,client_name_len,use_full_client_name);
+  /* Authentication done, now extract and compare user name. */
+  ret= get_client_name_from_context(&ctxt, client_name, MYSQL_USERNAME_LENGTH, compare_full_name);
   if (ret != CR_OK)
     goto cleanup;
+  
+  /* Always compare case-insensitive on Windows. */
+  ret= _stricmp(client_name, username) == 0 ? CR_OK : CR_ERROR;
+  if (ret != CR_OK)
+  {
+    my_printf_error(ER_UNKNOWN_ERROR, "GSSAPI name mismatch, got %s", MYF(0), client_name);
+  }
 
 cleanup:
   if (SecIsValidHandle(&ctxt))

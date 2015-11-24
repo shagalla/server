@@ -3466,7 +3466,6 @@ mysql_prepare_create_table(THD *thd, HA_CREATE_INFO *create_info,
 	  sql_field->flags=		dup_field->flags;
           sql_field->interval=          dup_field->interval;
           sql_field->vcol_info=         dup_field->vcol_info;
-          sql_field->stored_in_db=      dup_field->stored_in_db;
 	  it2.remove();			// Remove first (create) definition
 	  select_field_pos--;
 	  break;
@@ -3508,14 +3507,14 @@ mysql_prepare_create_table(THD *thd, HA_CREATE_INFO *create_info,
       (virtual fields) and update their offset later 
       (see the next loop).
     */
-    if (sql_field->stored_in_db)
+    if (sql_field->stored_in_db())
       record_offset+= sql_field->pack_length;
   }
   /* Update virtual fields' offset*/
   it.rewind();
   while ((sql_field=it++))
   {
-    if (!sql_field->stored_in_db)
+    if (!sql_field->stored_in_db())
     {
       sql_field->offset= record_offset;
       record_offset+= sql_field->pack_length;
@@ -3868,7 +3867,7 @@ mysql_prepare_create_table(THD *thd, HA_CREATE_INFO *create_info,
 	  }
 	}
 #endif
-        if (!sql_field->stored_in_db)
+        if (!sql_field->stored_in_db())
         {
           /* Key fields must always be physically stored. */
           my_error(ER_KEY_BASED_ON_GENERATED_VIRTUAL_COLUMN, MYF(0));
@@ -6247,7 +6246,8 @@ static bool fill_alter_inplace_info(THD *thd,
         the defining expression has changed.
       */
       if (field->vcol_info && 
-          (field->stored_in_db || field->vcol_info->is_in_partitioning_expr()))
+          (field->vcol_info->stored_in_db ||
+           field->vcol_info->is_in_partitioning_expr()))
       {
         ha_alter_info->handler_flags|= Alter_inplace_info::ALTER_COLUMN_VCOL;
       }
@@ -6327,7 +6327,8 @@ static bool fill_alter_inplace_info(THD *thd,
       DBUG_ASSERT(ha_alter_info->handler_flags & Alter_inplace_info::ADD_COLUMN);
 
       if (new_field->vcol_info && 
-          (new_field->stored_in_db || new_field->vcol_info->is_in_partitioning_expr()))
+          (new_field->vcol_info->stored_in_db ||
+           new_field->vcol_info->is_in_partitioning_expr()))
       {
         ha_alter_info->handler_flags|= Alter_inplace_info::ALTER_COLUMN_VCOL;
       }
@@ -7394,7 +7395,7 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
         of the list for now. Their positions will be corrected later.
       */
       new_create_list.push_back(def, thd->mem_root);
-      if (field->stored_in_db != def->stored_in_db)
+      if (field->stored_in_db() != def->stored_in_db())
       {
         my_error(ER_UNSUPPORTED_ACTION_ON_VIRTUAL_COLUMN, MYF(0));
         goto err;

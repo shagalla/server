@@ -190,6 +190,23 @@ cleanup:
 
 int plugin_init()
 {
+  CredHandle cred;
+  SECURITY_STATUS ret = AcquireCredentialsHandle(
+    NULL,
+    srv_mech_name,
+    SECPKG_CRED_INBOUND,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    &cred,
+    NULL);
+  if (SEC_ERROR(ret))
+  {
+    log_error(ret, "AcquireCredentialsHandle");
+    return -1;
+  }
+  FreeCredentialsHandle(&cred);
   return 0;
 }
 

@@ -99,10 +99,11 @@ static int gssapi_auth(MYSQL_PLUGIN_VIO *vio, MYSQL_SERVER_AUTH_INFO *auth_info)
 
 static int initialize_plugin(void *unused)
 {
+  srv_mech_name = (char*)mech_names[srv_mech_index];
   int rc = plugin_init();
   if (rc)
     return rc;
-  srv_mech_name = (char*)mech_names[srv_mech_index];
+
   strcpy(first_packet, srv_target_name);
   strcpy(first_packet + strlen(srv_target_name) + 1,srv_mech_name);
   first_packet_len = strlen(srv_target_name) + strlen(srv_mech_name) + 2;
@@ -112,7 +113,7 @@ static int initialize_plugin(void *unused)
 
 static int deinitialize_plugin(void *unused)
 {
-  plugin_deinit();
+  return plugin_deinit();
 }
 
 static TYPELIB mech_name_typelib = {
@@ -149,7 +150,7 @@ static struct st_mysql_sys_var *system_variables[]= {
   NULL
 };
 
-/* register Kerberos authentication plugin */
+/* Register authentication plugin */
 static struct st_mysql_auth server_handler= {
   MYSQL_AUTHENTICATION_INTERFACE_VERSION,
   "auth_gssapi_client",
@@ -165,11 +166,11 @@ maria_declare_plugin(gssapi_server)
   "Plugin for GSSAPI/SSPI based authentication.",
   PLUGIN_LICENSE_BSD,
   initialize_plugin,
-  NULL,                                  /* destructor */
+  deinitialize_plugin,                   /* destructor */
   0x0100,                                /* version */
   NULL,                                  /* status variables */
   system_variables,                      /* system variables */
-  "GSSAPI/SSPI authentication plugin",
+  "1.0",
   MariaDB_PLUGIN_MATURITY_EXPERIMENTAL  
 }
 maria_declare_plugin_end;

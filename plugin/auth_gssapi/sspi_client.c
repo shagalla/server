@@ -22,7 +22,7 @@ static void log_error(MYSQL *mysql,SECURITY_STATUS err, const char *msg)
 
 
 /** Client side authentication*/
-int client_auth(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *vio)
+int auth_client(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *vio)
 {
 
   int ret;

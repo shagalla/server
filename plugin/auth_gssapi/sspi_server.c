@@ -64,7 +64,7 @@ static int get_client_name_from_context(CtxtHandle *ctxt,
 }
 
 
-int auth_server(MYSQL_PLUGIN_VIO *vio, const char *username, int compare_full_name)
+int auth_server(MYSQL_PLUGIN_VIO *vio, const char *user, int user_len, int compare_full_name)
 {
   int ret;
   SECURITY_STATUS sspi_ret;
@@ -171,7 +171,7 @@ int auth_server(MYSQL_PLUGIN_VIO *vio, const char *username, int compare_full_na
     goto cleanup;
   
   /* Always compare case-insensitive on Windows. */
-  ret= _stricmp(client_name, username) == 0 ? CR_OK : CR_ERROR;
+  ret= _stricmp(client_name, user) == 0 ? CR_OK : CR_ERROR;
   if (ret != CR_OK)
   {
     my_printf_error(ER_UNKNOWN_ERROR, "GSSAPI name mismatch, got %s", MYF(0), client_name);
@@ -186,4 +186,14 @@ cleanup:
 
   free(out);
   return ret;
+}
+
+int plugin_init()
+{
+  return 0;
+}
+
+int plugin_deinit()
+{
+  return 0;
 }

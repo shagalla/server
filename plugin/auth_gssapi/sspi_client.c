@@ -116,8 +116,8 @@ int client_auth(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *v
       /* send credential to server */
       if (vio->write_packet(vio, outbuf.pvBuffer, outbuf.cbBuffer))
       {
-        /* Server error packet contains detailled message. */
-		    ret= CR_OK_HANDSHAKE_COMPLETE; 
+        /* Server error packet contains detailed message. */
+        ret= CR_OK_HANDSHAKE_COMPLETE; 
         goto cleanup;
       }
     }

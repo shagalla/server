@@ -17,7 +17,7 @@ static void log_error(MYSQL *mysql,SECURITY_STATUS err, const char *msg)
 {
   char buf[1024];
   sspi_errmsg(err,msg,buf,sizeof(buf));
-  log_client_error(mysql,"SSPI client: %s", msg);
+  log_client_error(mysql,"SSPI client: %s", buf);
 }
 
 

@@ -39,10 +39,7 @@
 #include <mysql/plugin_auth.h>
 #include <mysql.h>
 #include "server_plugin.h"
-
-
-#define TARGET_NAME_MAX 256
-#define MECH_NAME_MAX 30
+#include "common.h"
 
 /* First packet sent from server to client, contains srv_target_name\0mech\0 */
 static char first_packet[TARGET_NAME_MAX + MECH_NAME_MAX +2];
@@ -99,8 +96,9 @@ static int gssapi_auth(MYSQL_PLUGIN_VIO *vio, MYSQL_SERVER_AUTH_INFO *auth_info)
 
 static int initialize_plugin(void *unused)
 {
+  int rc;
   srv_mech_name = (char*)mech_names[srv_mech_index];
-  int rc = plugin_init();
+  rc = plugin_init();
   if (rc)
     return rc;
 

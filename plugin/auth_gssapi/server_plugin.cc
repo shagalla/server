@@ -27,36 +27,30 @@
 /**
   @file
 
-  Kerberos server authentication plugin
-
-  kerberos_server is a general purpose server authentication plugin, it
-  authenticates user against Kerberos principal.
-
-  This is the server side implementation.
+  GSSAPI authentication plugin, server side
 */
 #include <my_sys.h>
 #include <mysqld_error.h>
 #include <mysql/plugin_auth.h>
-#include <mysql.h>
 #include "server_plugin.h"
 #include "common.h"
 
-/* First packet sent from server to client, contains srv_target_name\0mech\0 */
-static char first_packet[TARGET_NAME_MAX + MECH_NAME_MAX +2];
+/* First packet sent from server to client, contains srv_principal_name\0mech\0 */
+static char first_packet[PRINCIPAL_NAME_MAX + MECH_NAME_MAX +2];
 static int  first_packet_len;
 
 /* 
  Target name in GSSAPI/SSPI , for Kerberos it is service principal name
  (often user principal name of the server user will work)
 */
-char *srv_target_name;
+char *srv_principal_name;
 char *srv_keytab_path;
 char *srv_mech_name="";
-char  *srv_keytab_path;
-unsigned long srv_mech_index;
+unsigned long srv_mech;
 static const char* mech_names[] = {
   "Kerberos",
   "Negotiate",
+  "",
   NULL
 };
 
@@ -70,7 +64,7 @@ static int gssapi_auth(MYSQL_PLUGIN_VIO *vio, MYSQL_SERVER_AUTH_INFO *auth_info)
   int user_len;
  
   /* Send first packet with target name and mech name */
-  if (vio->write_packet(vio, first_packet, first_packet_len))
+  if (vio->write_packet(vio, (unsigned char *)first_packet, first_packet_len))
   {
     return CR_ERROR;
   }
@@ -97,14 +91,13 @@ static int gssapi_auth(MYSQL_PLUGIN_VIO *vio, MYSQL_SERVER_AUTH_INFO *auth_info)
 static int initialize_plugin(void *unused)
 {
   int rc;
-  srv_mech_name = (char*)mech_names[srv_mech_index];
   rc = plugin_init();
   if (rc)
     return rc;
 
-  strcpy(first_packet, srv_target_name);
-  strcpy(first_packet + strlen(srv_target_name) + 1,srv_mech_name);
-  first_packet_len = strlen(srv_target_name) + strlen(srv_mech_name) + 2;
+  strcpy(first_packet, srv_principal_name);
+  strcpy(first_packet + strlen(srv_principal_name) + 1,srv_mech_name);
+  first_packet_len = strlen(srv_principal_name) + strlen(srv_mech_name) + 2;
 
   return 0;
 }
@@ -127,24 +120,27 @@ static MYSQL_SYSVAR_STR(keytab_path, srv_keytab_path,
                         NULL, 
                         NULL,
                         "");
-static MYSQL_SYSVAR_STR(target_name, srv_target_name,
+static MYSQL_SYSVAR_STR(principal_name, srv_principal_name,
                         PLUGIN_VAR_RQCMDARG|PLUGIN_VAR_READONLY,
                         "GSSAPI target name - service principal name for Kerberos authentication.",
                         NULL, 
                         NULL,
                         "");
-
-static MYSQL_SYSVAR_ENUM(mech_name, srv_mech_index,
+static MYSQL_SYSVAR_ENUM(mech_name, srv_mech,
                         PLUGIN_VAR_RQCMDARG|PLUGIN_VAR_READONLY,
                         "GSSAPI mechanism : either Kerberos or Negotiate",
                         NULL, 
                         NULL,
-                        1,&mech_name_typelib);
+                        2,&mech_name_typelib);
 
 static struct st_mysql_sys_var *system_variables[]= {
-  MYSQL_SYSVAR(target_name),
+  MYSQL_SYSVAR(principal_name),
+#ifdef PLUGIN_SSPI
   MYSQL_SYSVAR(mech_name),
+#endif
+#ifdef PLUGIN_GSSAPI
   MYSQL_SYSVAR(keytab_path),
+#endif
   NULL
 };
 

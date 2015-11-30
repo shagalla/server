@@ -1,6 +1,14 @@
 /* Plugin variables*/
 #include <mysql/plugin_auth.h>
-extern char *srv_target_name;
+typedef enum 
+{
+  PLUGIN_MECH_KERBEROS = 0,
+  PLUGIN_MECH_SPNEGO   = 1,
+  PLUGIN_MECH_DEFAULT  = 2
+}PLUGIN_MECH;
+
+extern unsigned long srv_mech;
+extern char *srv_principal_name;
 extern char *srv_mech_name;
 extern char *srv_keytab_path;
 /*

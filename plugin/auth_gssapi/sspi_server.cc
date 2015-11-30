@@ -1,8 +1,11 @@
 #include "sspi.h"
+#include "common.h"
 #include "server_plugin.h"
 #include <mysql/plugin_auth.h>
 #include <my_sys.h>
 #include <mysqld_error.h>
+#include <log.h>
+
 
 /* This sends the error to the client */
 static void log_error(SECURITY_STATUS err, const char *msg)
@@ -11,6 +14,38 @@ static void log_error(SECURITY_STATUS err, const char *msg)
   sspi_errmsg(err,msg,buf,sizeof(buf));
   my_printf_error(ER_UNKNOWN_ERROR, "SSPI server: %s", MYF(0), msg);
 }
+
+static char INVALID_KERBEROS_PRINCIPAL[] = "localhost";
+
+static char *get_default_principal_name()
+{
+  static char default_principal[PRINCIPAL_NAME_MAX +1];
+  ULONG size= sizeof(default_principal);
+
+  if (GetUserNameEx(NameUserPrincipal,default_principal,&size))
+    return default_principal;
+
+  size= sizeof(default_principal);
+  if (GetUserNameEx(NameServicePrincipal,default_principal,&size))
+    return default_principal;
+  {
+    char domain[PRINCIPAL_NAME_MAX+1];
+    char host[PRINCIPAL_NAME_MAX+1];
+    size= sizeof(domain);
+    if (GetComputerNameEx(ComputerNameDnsDomain,domain,&size))
+    {
+      size= sizeof(host);
+      if (GetComputerNameEx(ComputerNameDnsHostname,domain,&size))
+      {
+        _snprintf(default_principal,sizeof(default_principal),"%s$@%s",host, domain);
+        return default_principal;
+      }
+    }
+  }
+  /* Unable to retrieve useful name, return something */
+  return INVALID_KERBEROS_PRINCIPAL;
+}
+
 
 /* Extract client name from SSPI context */
 static int get_client_name_from_context(CtxtHandle *ctxt,
@@ -77,7 +112,7 @@ int auth_server(MYSQL_PLUGIN_VIO *vio, const char *user, int user_len, int compa
   SecBuffer     inbuf;
   SecBufferDesc outbuf_desc;
   SecBuffer     outbuf;
-  PBYTE         out= NULL;
+  void*         out= NULL;
   char client_name[MYSQL_USERNAME_LENGTH + 1];
 
   ret= CR_ERROR;
@@ -91,7 +126,7 @@ int auth_server(MYSQL_PLUGIN_VIO *vio, const char *user, int user_len, int compa
     goto cleanup;
   }
   sspi_ret= AcquireCredentialsHandle(
-    NULL,
+    srv_principal_name,
     srv_mech_name,
     SECPKG_CRED_INBOUND,
     NULL,
@@ -191,8 +226,29 @@ cleanup:
 int plugin_init()
 {
   CredHandle cred;
-  SECURITY_STATUS ret = AcquireCredentialsHandle(
-    NULL,
+  SECURITY_STATUS ret;
+
+  /*
+    Use negotiate by default, which accepts raw kerberos
+    and also NTLM.
+  */
+  if (srv_mech == PLUGIN_MECH_DEFAULT)
+    srv_mech=  PLUGIN_MECH_SPNEGO;
+
+  if(srv_mech == PLUGIN_MECH_KERBEROS)
+    srv_mech_name= "Kerberos";
+  else if(srv_mech == PLUGIN_MECH_SPNEGO )
+    srv_mech_name= "Negotiate";
+
+  if(!srv_principal_name[0])
+  {
+    srv_principal_name= get_default_principal_name();
+  }
+  sql_print_information("SSPI: using principal name '%s', mech '%s'",
+    srv_principal_name, srv_mech_name);
+
+  ret = AcquireCredentialsHandle(
+    srv_principal_name,
     srv_mech_name,
     SECPKG_CRED_INBOUND,
     NULL,

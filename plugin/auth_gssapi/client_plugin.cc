@@ -27,12 +27,7 @@
 /**
   @file
 
-  Kerberos server authentication plugin
-
-  kerberos_server is a general purpose server authentication plugin, it
-  authenticates user against Kerberos principal.
-
-  This is the client side implementation.
+  GSSAPI authentication plugin, client side
 */
 #include <string.h>
 #include <stdarg.h>
@@ -42,16 +37,16 @@
 #include <stdio.h>
 #include "common.h"
 
-extern int auth_client(const char *target_name,
-                       const char *mech, 
+extern int auth_client(char *principal_name,
+                       char *mech, 
                        MYSQL *mysql,
                        MYSQL_PLUGIN_VIO *vio);
 
 static void parse_server_packet(char *packet, int packet_len, char *spn, char *mech)
 {
   size_t spn_len;
-  spn_len = strnlen(packet, packet_len, TARGET_NAME_MAX);
-  strncpy(spn, packet, TARGET_NAME_MAX);
+  spn_len = strnlen(packet, packet_len);
+  strncpy(spn, packet, PRINCIPAL_NAME_MAX);
   if (spn_len == packet_len - 1)
   {
     /* Mechanism not included into packet */
@@ -86,16 +81,16 @@ static int gssapi_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {
   int packet_len;
   unsigned char *packet;
-  char spn[TARGET_NAME_MAX + 1];
+  char spn[PRINCIPAL_NAME_MAX + 1];
   char mech[MECH_NAME_MAX + 1];
 
   /* read from server for service principal name */
-  packet_len= vio->read_packet(vio, (unsigned char **) &packet);
+  packet_len= vio->read_packet(vio, &packet);
   if (packet_len < 0)
   {
     return CR_ERROR;
   }
-  parse_server_packet(packet, packet_len, spn, mech);
+  parse_server_packet((char *)packet, packet_len, spn, mech);
   return auth_client(spn, mech, mysql, vio);
 }
 

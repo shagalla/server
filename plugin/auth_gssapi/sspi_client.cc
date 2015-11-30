@@ -22,7 +22,7 @@ static void log_error(MYSQL *mysql,SECURITY_STATUS err, const char *msg)
 
 
 /** Client side authentication*/
-int auth_client(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *vio)
+int auth_client(char *principal_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *vio)
 {
 
   int ret;
@@ -90,7 +90,7 @@ int auth_client(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *v
     sspi_err= InitializeSecurityContext(
       &cred,
       SecIsValidHandle(&ctxt) ? &ctxt : NULL,
-      target_name,
+      principal_name,
       0,
       0,
       SECURITY_NATIVE_DREP,
@@ -114,7 +114,7 @@ int auth_client(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *v
     if (outbuf.cbBuffer)
     {
       /* send credential to server */
-      if (vio->write_packet(vio, outbuf.pvBuffer, outbuf.cbBuffer))
+      if (vio->write_packet(vio, (unsigned char *)outbuf.pvBuffer, outbuf.cbBuffer))
       {
         /* Server error packet contains detailed message. */
         ret= CR_OK_HANDSHAKE_COMPLETE; 

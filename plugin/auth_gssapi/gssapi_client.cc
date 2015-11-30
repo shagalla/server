@@ -7,34 +7,6 @@
 
 extern void log_client_error(MYSQL *mysql,const char *fmt,...);
 
-static void debug_status(OM_uint32 status_code)
-{
-OM_uint32 message_context;
-
-OM_uint32 maj_status;
-OM_uint32 min_status;
-gss_buffer_desc status_string;
-
-message_context = 0;
-
-do {
-
-     maj_status = gss_display_status(
-               &min_status,
-               status_code,
-               GSS_C_GSS_CODE,
-               GSS_C_NO_OID,
-               &message_context,
-               &status_string);
-
-     fprintf(stderr, "%.*s\n", \
-               (int)status_string.length, \
-               (char *)status_string.value);
-
-     gss_release_buffer(&min_status, &status_string);
-
-} while (message_context != 0);
-}
 
 /* This sends the error to the client */
 static void log_error(MYSQL *mysql, OM_uint32 major, OM_uint32 minor, const char *msg)
@@ -81,20 +53,14 @@ int auth_client(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *v
     major= gss_init_sec_context(&minor, cred, &ctxt, service_name,
                                 GSS_C_NO_OID, 0, 0, GSS_C_NO_CHANNEL_BINDINGS,
                                 &input, NULL, &output, NULL, NULL);
-    printf("init sec context returns %d/%d output len %d\n",major,minor,(int)output.length);
-    debug_status(major);
-    printf("minor:\n");
-    debug_status(minor);
-    printf("continue needed %d\n",GSS_S_CONTINUE_NEEDED);
     if (output.length)
     {
       /* send credential */
-      if(vio->write_packet(vio, output.value, output.length))
+      if(vio->write_packet(vio, (unsigned char *)output.value, output.length))
       {
         /* Server error packet contains detailed message. */
         ret= CR_OK_HANDSHAKE_COMPLETE; 
         gss_release_buffer (&minor, &output);
-	printf("write packet failed");
         goto cleanup;
       }
     }
@@ -120,10 +86,7 @@ int auth_client(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *v
     }
   } while (major & GSS_S_CONTINUE_NEEDED);
 
-  if(major != GSS_S_COMPLETE)
-    printf("major = %d\n", major);
   ret= CR_OK;
-  printf("OK");
 cleanup:
 
   gss_release_name(&minor, &service_name);

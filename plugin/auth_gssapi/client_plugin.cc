@@ -42,7 +42,7 @@ extern int auth_client(char *principal_name,
                        MYSQL *mysql,
                        MYSQL_PLUGIN_VIO *vio);
 
-static void parse_server_packet(char *packet, int packet_len, char *spn, char *mech)
+static void parse_server_packet(char *packet, size_t packet_len, char *spn, char *mech)
 {
   size_t spn_len;
   spn_len = strnlen(packet, packet_len);
@@ -90,7 +90,7 @@ static int gssapi_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
   {
     return CR_ERROR;
   }
-  parse_server_packet((char *)packet, packet_len, spn, mech);
+  parse_server_packet((char *)packet, (size_t)packet_len, spn, mech);
   return auth_client(spn, mech, mysql, vio);
 }
 

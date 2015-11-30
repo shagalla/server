@@ -1,3 +1,4 @@
+#include <my_config.h>
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_ext.h>
 #include <stdio.h>
@@ -29,17 +30,29 @@ int plugin_init()
   gss_cred_id_t cred= GSS_C_NO_CREDENTIAL;
   
   /* import service principal from plain text */
-  principal_name_buf.length= strlen(srv_principal_name);
-  principal_name_buf.value= srv_principal_name;
-  major= gss_import_name(&minor, &principal_name_buf, GSS_C_NT_USER_NAME, &service_name);
-  if(GSS_ERROR(major))
+  if(srv_principal_name && srv_principal_name[0])
   {
-    log_error(major, minor, "gss_import_name");
-    return -1;
+    principal_name_buf.length= strlen(srv_principal_name);
+    principal_name_buf.value= srv_principal_name;
+    major= gss_import_name(&minor, &principal_name_buf, GSS_C_NT_USER_NAME, &service_name);
+    if(GSS_ERROR(major))
+    {
+      log_error(major, minor, "gss_import_name");
+      return -1;
+    }
   }
-  if(srv_keytab_path && *srv_keytab_path)
+  else
   {
-    setenv("KRB5_KTNAME",srv_keytab_path,1);
+    service_name=  GSS_C_NO_NAME;
+  }
+
+  if(srv_keytab_path && srv_keytab_path[0])
+  {
+     if (access(srv_keytab_path, R_OK))
+     {
+       log_error(0,0, "Keytab not readable");
+     }
+     setenv("KRB5_KTNAME", srv_keytab_path, 1);
   }
   
   /* Check if SPN configuration is OK */
@@ -59,13 +72,16 @@ int plugin_init()
 
 int plugin_deinit()
 {
-  OM_uint32 minor;
-  gss_release_name(&minor, &service_name);
+  if (service_name != GSS_C_NO_NAME)
+  {
+    OM_uint32 minor;
+    gss_release_name(&minor, &service_name);
+  }
   return 0;
 }
 
 
-int auth_server(MYSQL_PLUGIN_VIO *vio,const char *user, int userlen, int use_full_name)
+int auth_server(MYSQL_PLUGIN_VIO *vio,const char *user, size_t userlen, int use_full_name)
 {
 
   int rc= CR_ERROR; /* return code */

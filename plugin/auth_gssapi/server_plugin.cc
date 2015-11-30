@@ -45,14 +45,8 @@ static int  first_packet_len;
 */
 char *srv_principal_name;
 char *srv_keytab_path;
-char *srv_mech_name={0};
+char *srv_mech_name=(char *)"";
 unsigned long srv_mech;
-static const char* mech_names[] = {
-  "Kerberos",
-  "Negotiate",
-  "",
-  NULL
-};
 
 /**
   The main server function of the GSSAPI plugin.
@@ -107,12 +101,6 @@ static int deinitialize_plugin(void *unused)
   return plugin_deinit();
 }
 
-static TYPELIB mech_name_typelib = {
-  array_elements(mech_names) - 1,
-  "mech_name_typelib",
-  mech_names,
-  NULL
-};
 /* system variable */
 static MYSQL_SYSVAR_STR(keytab_path, srv_keytab_path,
                         PLUGIN_VAR_RQCMDARG|PLUGIN_VAR_READONLY,
@@ -126,12 +114,26 @@ static MYSQL_SYSVAR_STR(principal_name, srv_principal_name,
                         NULL, 
                         NULL,
                         "");
+#ifdef PLUGIN_SSPI
+static const char* mech_names[] = {
+  "Kerberos",
+  "Negotiate",
+  "",
+  NULL
+};
+static TYPELIB mech_name_typelib = {
+  array_elements(mech_names) - 1,
+  "mech_name_typelib",
+  mech_names,
+  NULL
+};
 static MYSQL_SYSVAR_ENUM(mech_name, srv_mech,
                         PLUGIN_VAR_RQCMDARG|PLUGIN_VAR_READONLY,
                         "GSSAPI mechanism : either Kerberos or Negotiate",
                         NULL, 
                         NULL,
                         2,&mech_name_typelib);
+#endif
 
 static struct st_mysql_sys_var *system_variables[]= {
   MYSQL_SYSVAR(principal_name),

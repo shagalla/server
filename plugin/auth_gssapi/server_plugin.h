@@ -20,4 +20,4 @@ extern char *srv_keytab_path;
 int plugin_init();
 int plugin_deinit();
 
-int auth_server(MYSQL_PLUGIN_VIO *vio, const char *username, int  username_len, int use_full_name);
+int auth_server(MYSQL_PLUGIN_VIO *vio, const char *username, size_t  username_len, int use_full_name);

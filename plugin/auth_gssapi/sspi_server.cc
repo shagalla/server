@@ -99,7 +99,7 @@ static int get_client_name_from_context(CtxtHandle *ctxt,
 }
 
 
-int auth_server(MYSQL_PLUGIN_VIO *vio, const char *user, int user_len, int compare_full_name)
+int auth_server(MYSQL_PLUGIN_VIO *vio, const char *user, size_t user_len, int compare_full_name)
 {
   int ret;
   SECURITY_STATUS sspi_ret;

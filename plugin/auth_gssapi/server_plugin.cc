@@ -45,7 +45,7 @@ static int  first_packet_len;
 */
 char *srv_principal_name;
 char *srv_keytab_path;
-char *srv_mech_name="";
+char *srv_mech_name={0};
 unsigned long srv_mech;
 static const char* mech_names[] = {
   "Kerberos",

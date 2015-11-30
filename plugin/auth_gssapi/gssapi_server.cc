@@ -24,14 +24,14 @@ static void log_error( OM_uint32 major, OM_uint32 minor, const char *msg)
 
 int plugin_init()
 {
-  gss_buffer_desc target_name_buf;
+  gss_buffer_desc principal_name_buf;
   OM_uint32 major= 0, minor= 0;
   gss_cred_id_t cred= GSS_C_NO_CREDENTIAL;
   
   /* import service principal from plain text */
-  target_name_buf.length= strlen(srv_target_name);
-  target_name_buf.value= srv_target_name;
-  major= gss_import_name(&minor, &target_name_buf, GSS_C_NT_USER_NAME, &service_name);
+  principal_name_buf.length= strlen(srv_principal_name);
+  principal_name_buf.value= srv_principal_name;
+  major= gss_import_name(&minor, &principal_name_buf, GSS_C_NT_USER_NAME, &service_name);
   if(GSS_ERROR(major))
   {
     log_error(major, minor, "gss_import_name");
@@ -59,7 +59,7 @@ int plugin_init()
 
 int plugin_deinit()
 {
-  int minor;
+  OM_uint32 minor;
   gss_release_name(&minor, &service_name);
   return 0;
 }

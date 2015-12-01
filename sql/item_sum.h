@@ -705,7 +705,7 @@ public:
 };
 
 
-class Item_sum_int :public Item_sum_num
+class Item_sum_int :public Item_sum_num, public Type_handler_longlong
 {
 public:
   Item_sum_int(THD *thd, Item *item_par): Item_sum_num(thd, item_par) {}
@@ -714,8 +714,6 @@ public:
   double val_real() { DBUG_ASSERT(fixed == 1); return (double) val_int(); }
   String *val_str(String*str);
   my_decimal *val_decimal(my_decimal *);
-  enum Item_result result_type () const { return INT_RESULT; }
-  enum_field_types field_type() const { return MYSQL_TYPE_LONGLONG; }
   void fix_length_and_dec()
   { decimals=0; max_length=21; maybe_null=null_value=0; }
 };
@@ -747,12 +745,6 @@ public:
   longlong val_int();
   String *val_str(String*str);
   my_decimal *val_decimal(my_decimal *);
-  enum_field_types field_type() const
-  { return Type_handler_hybrid_field_type::field_type(); }
-  enum Item_result result_type () const
-  { return Type_handler_hybrid_field_type::result_type(); }
-  enum Item_result cmp_type () const
-  { return Type_handler_hybrid_field_type::cmp_type(); }
   void reset_field();
   void update_field();
   void no_rows_in_result() {}
@@ -880,7 +872,7 @@ But, this falls prey to catastrophic cancellation.  Instead, use the recurrence 
 
 */
 
-class Item_sum_variance : public Item_sum_num
+class Item_sum_variance : public Item_sum_num, public Type_handler_double
 {
   void fix_length_and_dec();
 
@@ -908,8 +900,6 @@ public:
     { return sample ? "var_samp(" : "variance("; }
   Item *copy_or_same(THD* thd);
   Field *create_tmp_field(bool group, TABLE *table, uint convert_blob_length);
-  enum Item_result result_type () const { return REAL_RESULT; }
-  enum_field_types field_type() const { return MYSQL_TYPE_DOUBLE;}
   void cleanup()
   {
     count= 0;
@@ -970,12 +960,6 @@ protected:
   void reset_field();
   String *val_str(String *);
   bool keep_field_type(void) const { return 1; }
-  enum Item_result result_type () const
-  { return Type_handler_hybrid_field_type::result_type(); }
-  enum Item_result cmp_type () const
-  { return Type_handler_hybrid_field_type::cmp_type(); }
-  enum enum_field_types field_type() const
-  { return Type_handler_hybrid_field_type::field_type(); }
   void update_field();
   void min_max_update_str_field();
   void min_max_update_real_field();
@@ -1116,14 +1100,12 @@ public:
 };
 
 
-class Item_avg_field_double :public Item_avg_field
+class Item_avg_field_double :public Item_avg_field, public Type_handler_double
 {
 public:
   Item_avg_field_double(THD *thd, Item_sum_avg *item)
    :Item_avg_field(thd, item)
   { }
-  enum_field_types field_type() const { return MYSQL_TYPE_DOUBLE; }
-  enum Item_result result_type () const { return REAL_RESULT; }
   longlong val_int() { return val_int_from_real(); }
   my_decimal *val_decimal(my_decimal *dec) { return val_decimal_from_real(dec); }
   String *val_str(String *str) { return val_string_from_real(str); }
@@ -1131,7 +1113,8 @@ public:
 };
 
 
-class Item_avg_field_decimal :public Item_avg_field
+class Item_avg_field_decimal :public Item_avg_field,
+                              public Type_handler_newdecimal
 {
   uint f_precision, f_scale, dec_bin_size;
 public:
@@ -1141,8 +1124,6 @@ public:
     f_scale(item->f_scale),
     dec_bin_size(item->dec_bin_size)
   { }
-  enum_field_types field_type() const { return MYSQL_TYPE_NEWDECIMAL; }
-  enum Item_result result_type () const { return DECIMAL_RESULT; }
   double val_real() { return val_real_from_decimal(); }
   longlong val_int() { return val_int_from_decimal(); }
   String *val_str(String *str) { return val_string_from_decimal(str); }
@@ -1150,7 +1131,7 @@ public:
 };
 
 
-class Item_variance_field :public Item_sum_field
+class Item_variance_field :public Item_sum_field, public Type_handler_double
 {
   uint sample;
 public:
@@ -1165,8 +1146,6 @@ public:
   my_decimal *val_decimal(my_decimal *dec_buf)
   { return val_decimal_from_real(dec_buf); }
   bool is_null() { update_null_value(); return null_value; }
-  enum_field_types field_type() const { return MYSQL_TYPE_DOUBLE; }
-  enum Item_result result_type () const { return REAL_RESULT; }
   bool check_vcol_func_processor(uchar *int_arg)
   {
     return trace_unsupported_by_check_vcol_func_processor("var_field");
@@ -1251,7 +1230,7 @@ public:
 };
 
 
-class Item_sum_udf_float :public Item_udf_sum
+class Item_sum_udf_float :public Item_udf_sum, public Type_handler_double
 {
  public:
   Item_sum_udf_float(THD *thd, udf_func *udf_arg):
@@ -1264,15 +1243,12 @@ class Item_sum_udf_float :public Item_udf_sum
   double val_real();
   String *val_str(String*str);
   my_decimal *val_decimal(my_decimal *);
-  enum Item_result result_type () const { return REAL_RESULT; }
-  enum Item_result cmp_type () const { return REAL_RESULT; }
-  enum_field_types field_type() const { return MYSQL_TYPE_DOUBLE; }
   void fix_length_and_dec() { fix_num_length_and_dec(); }
   Item *copy_or_same(THD* thd);
 };
 
 
-class Item_sum_udf_int :public Item_udf_sum
+class Item_sum_udf_int :public Item_udf_sum, public Type_handler_longlong
 {
 public:
   Item_sum_udf_int(THD *thd, udf_func *udf_arg):
@@ -1286,14 +1262,12 @@ public:
     { DBUG_ASSERT(fixed == 1); return (double) Item_sum_udf_int::val_int(); }
   String *val_str(String*str);
   my_decimal *val_decimal(my_decimal *);
-  enum Item_result result_type () const { return INT_RESULT; }
-  enum_field_types field_type() const { return MYSQL_TYPE_LONGLONG; }
   void fix_length_and_dec() { decimals=0; max_length=21; }
   Item *copy_or_same(THD* thd);
 };
 
 
-class Item_sum_udf_str :public Item_udf_sum
+class Item_sum_udf_str :public Item_udf_sum, public Type_handler_string_hybrid
 {
 public:
   Item_sum_udf_str(THD *thd, udf_func *udf_arg):
@@ -1326,14 +1300,13 @@ public:
     return cs->cset->strtoll10(cs, res->ptr(), &end, &err_not_used);
   }
   my_decimal *val_decimal(my_decimal *dec);
-  enum Item_result result_type () const { return STRING_RESULT; }
-  enum_field_types field_type() const { return string_field_type(); }
+  uint type_handler_max_octet_length() const { return max_length; }
   void fix_length_and_dec();
   Item *copy_or_same(THD* thd);
 };
 
 
-class Item_sum_udf_decimal :public Item_udf_sum
+class Item_sum_udf_decimal :public Item_udf_sum, public Type_handler_newdecimal
 {
 public:
   Item_sum_udf_decimal(THD *thd, udf_func *udf_arg):
@@ -1346,8 +1319,6 @@ public:
   double val_real();
   longlong val_int();
   my_decimal *val_decimal(my_decimal *);
-  enum Item_result result_type () const { return DECIMAL_RESULT; }
-  enum_field_types field_type() const { return MYSQL_TYPE_NEWDECIMAL; }
   void fix_length_and_dec() { fix_num_length_and_dec(); }
   Item *copy_or_same(THD* thd);
 };

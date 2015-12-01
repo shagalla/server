@@ -42,7 +42,7 @@ public:
 
 /*** Abstract classes for every XXX_RESULT */
 
-class Type_handler_real_result: public Type_handler
+class Type_handler_real_result: public virtual Type_handler
 {
 public:
   Item_result result_type() const { return REAL_RESULT; }
@@ -51,7 +51,7 @@ public:
 };
 
 
-class Type_handler_decimal_result: public Type_handler
+class Type_handler_decimal_result: public virtual Type_handler
 {
 public:
   Item_result result_type() const { return DECIMAL_RESULT; }
@@ -60,7 +60,7 @@ public:
 };
 
 
-class Type_handler_int_result: public Type_handler
+class Type_handler_int_result: public virtual Type_handler
 {
 public:
   Item_result result_type() const { return INT_RESULT; }
@@ -69,7 +69,7 @@ public:
 };
 
 
-class Type_handler_temporal_result: public Type_handler
+class Type_handler_temporal_result: public virtual Type_handler
 {
 public:
   Item_result result_type() const { return STRING_RESULT; }
@@ -78,7 +78,7 @@ public:
 };
 
 
-class Type_handler_string_result: public Type_handler
+class Type_handler_string_result: public virtual Type_handler
 {
 public:
   Item_result result_type() const { return STRING_RESULT; }
@@ -294,6 +294,42 @@ public:
 };
 
 
+class Type_handler_string_hybrid: public virtual Type_handler
+{
+public:
+  virtual uint type_handler_max_octet_length() const= 0;
+  enum_field_types field_type() const
+  {
+    return string_type_handler(type_handler_max_octet_length())->field_type();
+  }
+  Item_result result_type() const { return STRING_RESULT; }
+  Item_result cmp_type() const { return STRING_RESULT; }
+};
+
+
+/**
+  Type handler with a reference to another type handler.
+*/
+class Type_handler_ref: public virtual Type_handler
+{
+public:
+  // Children classes should define this:
+  virtual const Type_handler *type_handler_ref() const= 0;
+  enum_field_types field_type() const
+  {
+    return type_handler_ref()->field_type();
+  }
+  Item_result result_type() const
+  {
+    return type_handler_ref()->result_type();
+  }
+  Item_result cmp_type() const
+  {
+    return type_handler_ref()->cmp_type();
+  }
+};
+
+
 /**
   A handler for hybrid type functions, e.g.
   COALESCE(), IF(), IFNULL(), NULLIF(), CASE,
@@ -303,7 +339,7 @@ public:
   Makes sure that field_type(), cmp_type() and result_type()
   are always in sync to each other for hybrid functions.
 */
-class Type_handler_hybrid_field_type: public Type_handler
+class Type_handler_hybrid_field_type: public virtual Type_handler
 {
   const Type_handler *m_type_handler;
   const Type_handler *get_handler_by_result_type(Item_result type) const;
@@ -344,5 +380,6 @@ public:
                                                                 cs);
   }
 };
+
 
 #endif /* SQL_TYPE_H_INCLUDED */

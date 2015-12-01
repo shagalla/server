@@ -29,7 +29,7 @@ extern size_t username_char_length;
 
 class MY_LOCALE;
 
-class Item_str_func :public Item_func
+class Item_str_func :public Item_func, public Type_handler_string_hybrid
 {
 protected:
   /**
@@ -64,8 +64,6 @@ public:
   longlong val_int();
   double val_real();
   my_decimal *val_decimal(my_decimal *);
-  enum Item_result result_type () const { return STRING_RESULT; }
-  enum_field_types field_type() const { return string_field_type(); }
   void left_right_max_length();
   bool fix_fields(THD *thd, Item **ref);
   void update_null_value()
@@ -73,6 +71,7 @@ public:
     StringBuffer<MAX_FIELD_WIDTH> tmp;
     (void) val_str(&tmp);
   }
+  uint type_handler_max_octet_length() const { return max_length; }
 };
 
 

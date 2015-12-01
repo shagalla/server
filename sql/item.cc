@@ -1437,8 +1437,7 @@ Item_splocal::Item_splocal(THD *thd, const LEX_STRING &sp_var_name,
 
   sp_var_type= real_type_to_type(sp_var_type);
   m_type= sp_map_item_type(sp_var_type);
-  m_field_type= sp_var_type;
-  m_result_type= sp_map_result_type(sp_var_type);
+  set_handler_by_field_type(sp_var_type);
 }
 
 
@@ -8750,8 +8749,8 @@ Item_cache_temporal::Item_cache_temporal(THD *thd,
                                          enum_field_types field_type_arg):
   Item_cache_int(thd, field_type_arg)
 {
-  if (mysql_type_to_time_type(cached_field_type) == MYSQL_TIMESTAMP_ERROR)
-    cached_field_type= MYSQL_TYPE_DATETIME;
+  if (mysql_type_to_time_type(field_type()) == MYSQL_TIMESTAMP_ERROR)
+    set_handler_by_field_type(MYSQL_TYPE_DATETIME);
 }
 
 
@@ -8894,7 +8893,7 @@ void Item_cache_temporal::store_packed(longlong val_arg, Item *example_arg)
 Item *Item_cache_temporal::clone_item(THD *thd)
 {
   Item_cache_temporal *item= new (thd->mem_root)
-    Item_cache_temporal(thd, cached_field_type);
+    Item_cache_temporal(thd, field_type());
   item->store_packed(value, example);
   return item;
 }

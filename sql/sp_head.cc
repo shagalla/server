@@ -70,6 +70,7 @@ static void reset_start_time_for_sp(THD *thd)
     thd->set_start_time();
 }
 
+// TODO: remove this
 Item_result
 sp_map_result_type(enum enum_field_types type)
 {
@@ -87,9 +88,30 @@ sp_map_result_type(enum enum_field_types type)
   case MYSQL_TYPE_FLOAT:
   case MYSQL_TYPE_DOUBLE:
     return REAL_RESULT;
-  default:
+
+  case MYSQL_TYPE_NULL:
+  case MYSQL_TYPE_TIMESTAMP:
+  case MYSQL_TYPE_DATE:
+  case MYSQL_TYPE_TIME:
+  case MYSQL_TYPE_DATETIME:
+  case MYSQL_TYPE_YEAR: // QQ
+  case MYSQL_TYPE_NEWDATE:
+  case MYSQL_TYPE_VARCHAR:
+  case MYSQL_TYPE_TIMESTAMP2:
+  case MYSQL_TYPE_DATETIME2:
+  case MYSQL_TYPE_TIME2:
+  case MYSQL_TYPE_ENUM:
+  case MYSQL_TYPE_SET:
+  case MYSQL_TYPE_TINY_BLOB:
+  case MYSQL_TYPE_MEDIUM_BLOB:
+  case MYSQL_TYPE_LONG_BLOB:
+  case MYSQL_TYPE_BLOB:
+  case MYSQL_TYPE_VAR_STRING:
+  case MYSQL_TYPE_STRING:
+  case MYSQL_TYPE_GEOMETRY:
     return STRING_RESULT;
   }
+  return STRING_RESULT;
 }
 
 

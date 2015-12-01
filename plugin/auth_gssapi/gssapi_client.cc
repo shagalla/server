@@ -4,6 +4,7 @@
 #include <mysql/plugin_auth.h>
 #include <mysqld_error.h>
 #include <mysql.h>
+#include "gssapi_errmsg.h"
 
 extern void log_client_error(MYSQL *mysql,const char *fmt,...);
 
@@ -13,8 +14,11 @@ static void log_error(MYSQL *mysql, OM_uint32 major, OM_uint32 minor, const char
 {
   if (GSS_ERROR(major))
   {
-    log_client_error(mysql,"Client GSSAPI error (major %u, minor %u) : %s", 
-		     major, minor, msg);
+    char sysmsg[1024];
+    gssapi_errmsg(major, minor, sysmsg, sizeof(sysmsg));
+    log_client_error(mysql,
+      "Client GSSAPI error (major %u, minor %u) : %s - %s",
+       major, minor, msg, sysmsg);
   }
   else
   {
@@ -22,35 +26,33 @@ static void log_error(MYSQL *mysql, OM_uint32 major, OM_uint32 minor, const char
   }
 }
 
-int auth_client(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *vio)
+int auth_client(char *principal_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *vio)
 {
-  int len=0;
+  
   int ret= CR_ERROR;
   OM_uint32 major= 0, minor= 0;
-  
   gss_ctx_id_t ctxt= GSS_C_NO_CONTEXT;
-  gss_cred_id_t cred= GSS_C_NO_CREDENTIAL;
-  gss_buffer_desc target_name_buf, input;
-  gss_name_t service_name;
+  gss_name_t service_name= GSS_C_NO_NAME;
 
-  /* import principal from plain text */
-  target_name_buf.length= strlen(target_name);
-  target_name_buf.value= (void *) target_name;
-  major= gss_import_name(&minor, &target_name_buf, GSS_C_NT_USER_NAME, &service_name);
-
-  if (GSS_ERROR(major))
+  if (principal_name && principal_name[0])
   {
-    log_error(mysql, major, minor, "gss_import_name");
-    return CR_ERROR;
+    /* import principal from plain text */
+    gss_buffer_desc principal_name_buf;
+    principal_name_buf.length= strlen(principal_name);
+    principal_name_buf.value= (void *) principal_name;
+    major= gss_import_name(&minor, &principal_name_buf, GSS_C_NT_USER_NAME, &service_name);
+    if (GSS_ERROR(major))
+    {
+      log_error(mysql, major, minor, "gss_import_name");
+      return CR_ERROR;
+    }
   }
   
-  input.length= 0;
-  input.value= NULL;
-
+  gss_buffer_desc input= {0,0};
   do
   {
-    gss_buffer_desc output= {0, NULL};
-    major= gss_init_sec_context(&minor, cred, &ctxt, service_name,
+    gss_buffer_desc output= {0,0};
+    major= gss_init_sec_context(&minor, GSS_C_NO_CREDENTIAL, &ctxt, service_name,
                                 GSS_C_NO_OID, 0, 0, GSS_C_NO_CHANNEL_BINDINGS,
                                 &input, NULL, &output, NULL, NULL);
     if (output.length)
@@ -74,11 +76,10 @@ int auth_client(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *v
     
     if (major & GSS_S_CONTINUE_NEEDED)
     {
-      len= vio->read_packet(vio, (unsigned char **) &input.value);
+      int len= vio->read_packet(vio, (unsigned char **) &input.value);
       if (len <= 0)
       {
         /* Server error packet contains detailed message. */
-        printf("read packet failed\n");
         ret= CR_OK_HANDSHAKE_COMPLETE; 
         goto cleanup;
       }
@@ -87,13 +88,12 @@ int auth_client(char *target_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO *v
   } while (major & GSS_S_CONTINUE_NEEDED);
 
   ret= CR_OK;
-cleanup:
 
-  gss_release_name(&minor, &service_name);
+cleanup:
+  if (service_name != GSS_C_NO_NAME)
+    gss_release_name(&minor, &service_name);
   if (ctxt != GSS_C_NO_CONTEXT)
     gss_delete_sec_context(&minor, &ctxt, GSS_C_NO_BUFFER);
-  if (cred != GSS_C_NO_CREDENTIAL)
-    gss_release_cred(&minor, &cred);
 
   return ret;
 }

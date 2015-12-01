@@ -6,6 +6,7 @@
 #include <my_sys.h>
 #include <mysqld_error.h>
 #include "server_plugin.h"
+#include "gssapi_errmsg.h"
 
 static gss_name_t service_name = GSS_C_NO_NAME;
 
@@ -14,8 +15,10 @@ static void log_error( OM_uint32 major, OM_uint32 minor, const char *msg)
 {
   if (GSS_ERROR(major))
   {
-    my_printf_error(ER_UNKNOWN_ERROR,"Server GSSAPI error (major %u, minor %u) : %s", 
-      MYF(0), major, minor, msg);
+    char sysmsg[1024];
+    gssapi_errmsg(major, minor, sysmsg, sizeof(sysmsg));
+    my_printf_error(ER_UNKNOWN_ERROR,"Server GSSAPI error (major %u, minor %u) : %s -%s", 
+      MYF(0), major, minor, msg, sysmsg);
   }
   else
   {
@@ -48,10 +51,6 @@ int plugin_init()
 
   if(srv_keytab_path && srv_keytab_path[0])
   {
-     if (access(srv_keytab_path, R_OK))
-     {
-       log_error(0,0, "Keytab not readable");
-     }
      setenv("KRB5_KTNAME", srv_keytab_path, 1);
   }
   
@@ -151,6 +150,7 @@ int auth_server(MYSQL_PLUGIN_VIO *vio,const char *user, size_t userlen, int use_
   }
 
   client_name_str= (char *)client_name_buf.value;
+
   /* 
    * Compare input user name with the actual one. Return success if 
    * the names match exactly, or if use_full_name parameter is not set
@@ -165,14 +165,15 @@ int auth_server(MYSQL_PLUGIN_VIO *vio,const char *user, size_t userlen, int use_
     {
       rc= CR_OK;
     }
-    else 
-    {
-      rc= CR_ERROR;
-      my_printf_error(ER_UNKNOWN_ERROR, 
-		      "GSSAPI name mismatch, actual name %.*s",
-		      MYF(0),(int)client_name_buf.length,client_name_str);
-    }
   }
+  
+  if(rc != CR_OK)
+  {
+    my_printf_error(ER_UNKNOWN_ERROR, 
+      "GSSAPI name mismatch, actual name %.*s",
+      MYF(0),(int)client_name_buf.length,client_name_str);
+  }
+
   gss_release_buffer(&minor, &client_name_buf);
   
 

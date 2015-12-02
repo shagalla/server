@@ -11,13 +11,19 @@
 
 #include "sspi.h"
 
-
-extern void log_client_error(MYSQL *mysql,const char *fmt,...);
-static void log_error(MYSQL *mysql,SECURITY_STATUS err, const char *msg)
+extern void log_client_error(MYSQL *mysql, const char *fmt, ...);
+static void log_error(MYSQL *mysql, SECURITY_STATUS err, const char *msg)
 {
-  char buf[1024];
-  sspi_errmsg(err,msg,buf,sizeof(buf));
-  log_client_error(mysql,"SSPI client: %s", buf);
+  if (err)
+  {
+    char buf[1024];
+    sspi_errmsg(err, buf, sizeof(buf));
+    log_client_error(mysql, "SSPI client error 0x%x - %s - %s", msg, buf);
+  }
+  else
+  {
+    log_client_error(mysql, "SSPI client error %s", msg);
+  }
 }
 
 
@@ -59,14 +65,14 @@ int auth_client(char *principal_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO
 
   if (SEC_ERROR(sspi_err))
   {
-    log_error(mysql,sspi_err, "AcquireCredentialsHandle");
+    log_error(mysql, sspi_err, "AcquireCredentialsHandle");
     return CR_ERROR;
   }
 
   out = (PBYTE)malloc(SSPI_MAX_TOKEN_SIZE);
   if (!out)
   {
-    log_error(mysql,SEC_E_OK, "memory allocation error");
+    log_error(mysql, SEC_E_OK, "memory allocation error");
     goto cleanup;
   }
 
@@ -102,12 +108,12 @@ int auth_client(char *principal_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO
       &lifetime);
     if (SEC_ERROR(sspi_err))
     {
-      log_error(mysql,sspi_err, "InitializeSecurityContext");
+      log_error(mysql, sspi_err, "InitializeSecurityContext");
       goto cleanup;
     }
     if (sspi_err != SEC_E_OK && sspi_err != SEC_I_CONTINUE_NEEDED)
     {
-      log_error(mysql,sspi_err, "Unexpected response from InitializeSecurityContext");
+      log_error(mysql, sspi_err, "Unexpected response from InitializeSecurityContext");
       goto cleanup;
     }
 
@@ -117,7 +123,7 @@ int auth_client(char *principal_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO
       if (vio->write_packet(vio, (unsigned char *)outbuf.pvBuffer, outbuf.cbBuffer))
       {
         /* Server error packet contains detailed message. */
-        ret= CR_OK_HANDSHAKE_COMPLETE; 
+        ret= CR_OK_HANDSHAKE_COMPLETE;
         goto cleanup;
       }
     }
@@ -126,9 +132,9 @@ int auth_client(char *principal_name, char *mech, MYSQL *mysql, MYSQL_PLUGIN_VIO
     {
       int len= vio->read_packet(vio, (unsigned char **)&inbuf.pvBuffer);
       if (len <= 0)
-      { 
+      {
         /* Server side error is in the last server packet. */
-        ret= CR_OK_HANDSHAKE_COMPLETE; 
+        ret= CR_OK_HANDSHAKE_COMPLETE;
         goto cleanup;
       }
       inbuf.cbBuffer= len;

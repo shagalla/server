@@ -10,9 +10,17 @@
 /* This sends the error to the client */
 static void log_error(SECURITY_STATUS err, const char *msg)
 {
-  char buf[1024];
-  sspi_errmsg(err,msg,buf,sizeof(buf));
-  my_printf_error(ER_UNKNOWN_ERROR, "SSPI server: %s", MYF(0), msg);
+  if (err)
+  {
+    char buf[1024];
+    sspi_errmsg(err, buf, sizeof(buf));
+    my_printf_error(ER_UNKNOWN_ERROR, "SSPI server error 0x%x - %s - %s", MYF(0), msg, buf);
+  }
+  else
+  {
+    my_printf_error(ER_UNKNOWN_ERROR, "SSPI server error %s", MYF(0), msg);
+  }
+
 }
 
 static char INVALID_KERBEROS_PRINCIPAL[] = "localhost";

@@ -1,18 +1,18 @@
 # these four variables are present in almost every .pc file
 prefix=@CMAKE_INSTALL_PREFIX@
 exec_prefix=${prefix}
-libdir=${prefix}/@INSTALL_LIBDIR@
-includedir=${prefix}/@INSTALL_INCLUDEDIR@
+libdir=@INSTALL_LIBDIRABS@
+includedir=@INSTALL_INCLUDEDIRABS@
 # those are rarely present or not at all, but we export them regardless
-bindir=${prefix}/@INSTALL_BINDIR@
-sbindir=${prefix}/@INSTALL_SBINDIR@
-scriptdir=${prefix}/@INSTALL_SCRIPTDIR@
-plugindir=${prefix}/@INSTALL_PLUGINDIR@
-docdir=${prefix}/@INSTALL_DOCDIR@
-mandir=${prefix}/@INSTALL_MANDIR@
-sharedir=${prefix}/@INSTALL_SHAREDIR@
-mysqlsharedir=${prefix}/@INSTALL_MYSQLSHAREDIR@
-mysqltestdir=${prefix}/@INSTALL_MYSQLTESTDIR@
+bindir=@INSTALL_BINDIRABS@
+sbindir=@INSTALL_SBINDIRABS@
+scriptdir=@INSTALL_SCRIPTDIRABS@
+plugindir=@INSTALL_PLUGINDIRABS@
+docdir=@INSTALL_DOCDIRABS@
+mandir=@INSTALL_MANDIRABS@
+sharedir=@INSTALL_SHAREDIRABS@
+mysqlsharedir=@INSTALL_MYSQLSHAREDIRABS@
+mysqltestdir=@INSTALL_MYSQLTESTDIRABS@
 socket=@INSTALL_UNIX_ADDRDIR@
 
 Name: @CPACK_PACKAGE_NAME@

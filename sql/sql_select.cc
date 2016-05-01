@@ -1126,6 +1126,12 @@ JOIN::optimize_inner()
   uint no_jbuf_after;
   JOIN_TAB *tab;
   DBUG_ENTER("JOIN::optimize");
+  bool make_conds_copy= false;
+  Item *conds_copy;
+  if (make_conds_copy)
+  {
+    if (conds) {conds_copy= conds->build_clone(thd->mem_root);}
+  }
 
   do_send_rows = (unit->select_limit_cnt) ? 1 : 0;
   // to prevent double initialization on EXPLAIN

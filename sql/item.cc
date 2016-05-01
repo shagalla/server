@@ -2161,6 +2161,29 @@ bool Item_func_or_sum::agg_item_set_converter(const DTCollation &coll,
 }
 
 
+Item* Item_func_or_sum::build_clone(MEM_ROOT *mem_root)
+{
+  Item_func_or_sum *copy= (Item_func_or_sum *) get_copy(mem_root);
+  if (!copy)
+    return 0;
+  Item **arg_cop= copy->args;
+  if (!arg_cop)
+    return 0;
+  if (arg_count > 2)
+    copy->args= (Item**) alloc_root(mem_root, sizeof(Item*) * arg_count);
+  else if (arg_count > 0)
+    copy->args= copy->tmp_arg;
+  for (uint i= 0; i < arg_count; i++)
+  {
+    Item *arg_clone= args[i]->build_clone(mem_root);
+    if (!arg_clone)
+      return 0;
+    copy->args[i]= arg_clone;
+  }
+  return copy;
+}
+
+
 void Item_ident_for_show::make_field(THD *thd, Send_field *tmp_field)
 {
   tmp_field->table_name= tmp_field->org_table_name= table_name;
@@ -9722,5 +9745,14 @@ const char *dbug_print_item(Item *item)
     return "Couldn't fit into buffer";
 }
 
+
 #endif /*DBUG_OFF*/
+
+
+Item *Item::get_copy(MEM_ROOT *mem_root)
+{
+  dbug_print_item(this); 
+  DBUG_ASSERT(0);  
+  return 0;
+}
 

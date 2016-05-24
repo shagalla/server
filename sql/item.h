@@ -2827,6 +2827,8 @@ public:
   { return int_eq(value, item); }
   bool check_partition_func_processor(uchar *bool_arg) { return FALSE;}
   bool check_vcol_func_processor(uchar *arg) { return FALSE;}
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_int(*this); }
 };
 
 

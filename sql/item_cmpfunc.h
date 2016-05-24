@@ -1989,6 +1989,8 @@ public:
   longlong val_int();
   void fix_length_and_dec();
   const char *func_name() const { return "regexp"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_regex(*this); }
 
   virtual inline void print(String *str, enum_query_type query_type)
   {

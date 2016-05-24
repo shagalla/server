@@ -1107,6 +1107,7 @@ int JOIN::optimize()
 }
 
 
+bool make_conds_copy= false;
 /**
   global select optimisation.
 
@@ -1126,7 +1127,6 @@ JOIN::optimize_inner()
   uint no_jbuf_after;
   JOIN_TAB *tab;
   DBUG_ENTER("JOIN::optimize");
-  bool make_conds_copy= false;
   Item *conds_copy;
   if (make_conds_copy)
   {

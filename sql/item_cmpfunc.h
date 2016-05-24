@@ -774,6 +774,8 @@ public:
   Item *negated_item(THD *thd);
   void add_key_fields(JOIN *join, KEY_FIELD **key_fields, uint *and_level,
                       table_map usable_tables, SARGABLE_PARAM **sargables);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_ne(*this); }
 };
 
 

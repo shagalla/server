@@ -856,6 +856,8 @@ public:
                                       cond);
     return this;
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_between(*this); }
 };
 
 
@@ -975,6 +977,8 @@ public:
   {
     return Item_func_case_abbreviation2::decimal_precision2(args);
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_ifnull(*this); }
 };
 
 
@@ -1697,6 +1701,8 @@ public:
                         bool top_level);
   table_map not_null_tables() const { return 0; }
   Item *neg_transformer(THD *thd);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_isnull(*this); }
 };
 
 /* Functions used by HAVING for rewriting IN subquery */
@@ -1742,6 +1748,8 @@ public:
   Item *neg_transformer(THD *thd);
   virtual void print(String *str, enum_query_type query_type);
   void top_level_item() { abort_on_null=1; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_isnotnull(*this); }
 };
 
 

@@ -2616,6 +2616,8 @@ public:
   Item *safe_charset_converter(THD *thd, CHARSET_INFO *tocs);
   bool check_partition_func_processor(uchar *int_arg) {return FALSE;}
   bool check_vcol_func_processor(uchar *arg) { return FALSE;}
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_null(*this); }
 };
 
 class Item_null_result :public Item_null

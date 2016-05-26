@@ -188,6 +188,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "concat"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_concat(*this); }
 };
 
 class Item_func_decode_histogram :public Item_str_func

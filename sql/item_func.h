@@ -613,6 +613,8 @@ public:
   bool fix_fields(THD *thd, Item **ref);
   longlong val_int() { DBUG_ASSERT(fixed == 1); return value; }
   bool check_vcol_func_processor(uchar *int_arg) { return TRUE;}
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_connection_id(*this); }
 };
 
 
@@ -633,6 +635,8 @@ public:
   }
   virtual void print(String *str, enum_query_type query_type);
   uint decimal_precision() const { return args[0]->decimal_precision(); }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_signed(*this); }
 };
 
 
@@ -646,6 +650,8 @@ public:
   const char *func_name() const { return "cast_as_unsigned"; }
   longlong val_int();
   virtual void print(String *str, enum_query_type query_type);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_unsigned(*this); }
 };
 
 
@@ -669,6 +675,8 @@ public:
   void fix_length_and_dec() {}
   const char *func_name() const { return "decimal_typecast"; }
   virtual void print(String *str, enum_query_type query_type);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_decimal_typecast(*this); }
 };
 
 
@@ -686,6 +694,8 @@ public:
   void fix_length_and_dec() { maybe_null= 1; }
   const char *func_name() const { return "double_typecast"; }
   virtual void print(String *str, enum_query_type query_type);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_double_typecast(*this); }
 };
 
 
@@ -1577,6 +1587,8 @@ class Item_func_udf_float :public Item_udf_func
   String *val_str(String *str);
   enum_field_types field_type() const { return MYSQL_TYPE_DOUBLE; }
   void fix_length_and_dec() { fix_num_length_and_dec(); }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_udf_float(*this); }
 };
 
 
@@ -1594,6 +1606,8 @@ public:
   enum Item_result result_type () const { return INT_RESULT; }
   enum_field_types field_type() const { return MYSQL_TYPE_LONGLONG; }
   void fix_length_and_dec() { decimals= 0; max_length= 21; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_udf_int(*this); }
 };
 
 
@@ -1611,6 +1625,8 @@ public:
   enum Item_result result_type () const { return DECIMAL_RESULT; }
   enum_field_types field_type() const { return MYSQL_TYPE_NEWDECIMAL; }
   void fix_length_and_dec() { fix_num_length_and_dec(); }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_udf_decimal(*this); }
 };
 
 
@@ -1649,6 +1665,8 @@ public:
   enum Item_result result_type () const { return STRING_RESULT; }
   enum_field_types field_type() const { return string_field_type(); }
   void fix_length_and_dec();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_udf_str(*this); }
 };
 
 #else /* Dummy functions to get sql_yacc.cc compiled */
@@ -1724,6 +1742,8 @@ class Item_func_get_lock :public Item_int_func
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_get_lock(*this); }
 };
 
 class Item_func_release_lock :public Item_int_func
@@ -1744,6 +1764,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_release_lock(*this); }
 };
 
 /* replication functions */
@@ -1764,6 +1786,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_master_pos_wait(*this); }
 };
 
 
@@ -1780,6 +1804,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_master_gtid_wait(*this); }
 };
 
 
@@ -1893,6 +1919,8 @@ public:
   bool register_field_in_bitmap(uchar *arg);
   bool set_entry(THD *thd, bool create_if_not_exists);
   void cleanup();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_set_user_var(*this); }
 };
 
 
@@ -2012,6 +2040,8 @@ public:
 
   void cleanup();
   bool check_vcol_func_processor(uchar *int_arg) { return TRUE;}
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_get_system_var(*this); }
 };
 
 
@@ -2120,6 +2150,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_is_free_lock(*this); }
 };
 
 class Item_func_is_used_lock :public Item_int_func
@@ -2134,6 +2166,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_is_used_lock(*this); }
 };
 
 /* For type casts */
@@ -2315,6 +2349,8 @@ public:
   {
     return TRUE;
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_sp(*this); }
 };
 
 
@@ -2329,6 +2365,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_found_rows(*this); }
 };
 
 
@@ -2346,6 +2384,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_uuid_short(*this); }
 };
 
 

@@ -1105,6 +1105,7 @@ public:
   /* cloning of constant items (0 if it is not const) */
   virtual Item *clone_item(THD *thd) { return 0; }
   virtual Item* build_clone(MEM_ROOT *mem_root) { return get_copy(mem_root); }
+  virtual bool depends_only_on(table_map view_map) { return ((used_tables() & (~view_map)) == 0); }
   virtual cond_result eq_cmp_result() const { return COND_OK; }
   inline uint float_length(uint decimals_par) const
   { return decimals != NOT_FIXED_DEC ? (DBL_DIG+2+decimals_par) : DBL_DIG+8;}
@@ -1474,6 +1475,7 @@ public:
   virtual bool find_selective_predicates_list_processor(uchar *opt_arg)
   { return 0; }
   virtual Item *get_copy(MEM_ROOT *mem_root);
+  //virtual Item *get_copy(MEM_ROOT *mem_root)=0;
 
   /* To call bool function for all arguments */
   struct bool_func_call_args
@@ -2239,6 +2241,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor("name_const");
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_name_const(*this); }
 };
 
 class Item_num: public Item_basic_constant
@@ -2847,6 +2851,8 @@ public:
   virtual void print(String *str, enum_query_type query_type);
   Item_num *neg(THD *thd);
   uint decimal_precision() const { return max_length; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_uint(*this); }
 };
 
 
@@ -2900,6 +2906,8 @@ public:
   void set_decimal_value(my_decimal *value_par);
   bool check_partition_func_processor(uchar *bool_arg) { return FALSE;}
   bool check_vcol_func_processor(uchar *arg) { return FALSE;}
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_decimal(*this); }
 };
 
 
@@ -2948,6 +2956,8 @@ public:
   virtual void print(String *str, enum_query_type query_type);
   bool eq(const Item *item, bool binary_cmp) const
   { return real_eq(value, item); }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_float(*this); }
 };
 
 
@@ -3492,6 +3502,8 @@ public:
   void print(String *str, enum_query_type query_type);
   Item *clone_item(THD *thd);
   bool get_date(MYSQL_TIME *res, ulonglong fuzzy_date);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_date_literal(*this); }
 };
 
 
@@ -3511,6 +3523,8 @@ public:
   void print(String *str, enum_query_type query_type);
   Item *clone_item(THD *thd);
   bool get_date(MYSQL_TIME *res, ulonglong fuzzy_date);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_time_literal(*this); }
 };
 
 
@@ -3532,6 +3546,8 @@ public:
   void print(String *str, enum_query_type query_type);
   Item *clone_item(THD *thd);
   bool get_date(MYSQL_TIME *res, ulonglong fuzzy_date);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_datetime_literal(*this); }
 };
 
 
@@ -4076,6 +4092,8 @@ public:
   { 
     return (*ref)->has_subquery();
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_ref(*this); }
 };
 
 
@@ -4118,6 +4136,8 @@ public:
   bool is_null();
   bool get_date(MYSQL_TIME *ltime, ulonglong fuzzydate);
   virtual Ref_Type ref_type() { return DIRECT_REF; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_direct_ref(*this); }
 };
 
 
@@ -4279,6 +4299,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor("cache");
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_cache_wrapper(*this); }
 };
 
 
@@ -4530,6 +4552,8 @@ public:
   bool get_date(MYSQL_TIME *ltime, ulonglong fuzzydate);
   virtual void print(String *str, enum_query_type query_type);
   table_map used_tables() const;
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_ref_null_helper(*this); }
 };
 
 /*
@@ -4689,6 +4713,8 @@ public:
   longlong val_int();
   void copy();
   int save_in_field(Field *field, bool no_conversions);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_copy_string(*this); }
 };
 
 
@@ -4711,6 +4737,8 @@ public:
     return null_value ? 0 : cached_value;
   }
   virtual void copy();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_copy_int(*this); }
 };
 
 
@@ -4727,6 +4755,8 @@ public:
   {
     return null_value ? 0.0 : (double) (ulonglong) cached_value;
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_copy_uint(*this); }
 };
 
 
@@ -4753,6 +4783,8 @@ public:
     cached_value= item->val_real();
     null_value= item->null_value;
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_copy_float(*this); }
 };
 
 
@@ -4772,6 +4804,8 @@ public:
   double val_real();
   longlong val_int();
   void copy();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_copy_decimal(*this); }
 };
 
 
@@ -5192,6 +5226,8 @@ public:
   enum Item_result result_type() const { return INT_RESULT; }
   bool cache_value();
   int save_in_field(Field *field, bool no_conversions);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_cache_int(*this); }
 };
 
 
@@ -5216,6 +5252,8 @@ public:
     Important when storing packed datetime values.
   */
   Item *clone_item(THD *thd);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_cache_temporal(*this); }
 };
 
 
@@ -5232,6 +5270,8 @@ public:
   my_decimal *val_decimal(my_decimal *);
   enum Item_result result_type() const { return REAL_RESULT; }
   bool cache_value();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_cache_real(*this); }
 };
 
 
@@ -5248,6 +5288,8 @@ public:
   my_decimal *val_decimal(my_decimal *);
   enum Item_result result_type() const { return DECIMAL_RESULT; }
   bool cache_value();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_cache_decimal(*this); }
 };
 
 
@@ -5274,6 +5316,8 @@ public:
   CHARSET_INFO *charset() const { return value->charset(); };
   int save_in_field(Field *field, bool no_conversions);
   bool cache_value();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_cache_str(*this); }
 };
 
 
@@ -5297,6 +5341,8 @@ public:
     */
     return Item::safe_charset_converter(thd, tocs);
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_cache_str_for_nullif(*this); }
 };
 
 
@@ -5368,6 +5414,8 @@ public:
   }
   bool cache_value();
   virtual void set_null();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_cache_row(*this); }
 };
 
 

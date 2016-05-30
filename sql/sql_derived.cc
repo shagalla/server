@@ -986,3 +986,82 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
   unit->set_thd(thd);
   DBUG_RETURN(FALSE);
 }
+
+
+Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map) 
+{
+  if (cond->depends_only_on(view_map))
+    return cond;	
+  if (cond->type() == Item::COND_ITEM)
+  {
+    if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
+    {
+      Item_cond_and *new_cond=new (thd->mem_root) Item_cond_and(thd);
+      if (!new_cond)
+	return 0;		
+      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
+      Item *item;
+      while ((item=li++))
+      {
+	Item *fix= extract_cond_for_view(thd, item, view_map);
+	if (fix)
+	  new_cond->argument_list()->push_back(fix, thd->mem_root);
+      }
+      switch (new_cond->argument_list()->elements) 
+      {
+      case 0:
+	return 0;			
+      case 1:
+	return new_cond->argument_list()->head();
+      default:
+	return new_cond;
+      }
+    }
+    else
+    {					
+      Item_cond_or *new_cond=new (thd->mem_root) Item_cond_or(thd);
+      if (!new_cond)
+	return 0;			
+      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
+      Item *item;
+      while ((item=li++))
+      {
+	Item *fix= extract_cond_for_view(thd, item, view_map);
+	if (!fix)
+	  return 0;
+	fix->marker=1;
+	new_cond->argument_list()->push_back(fix, thd->mem_root);
+      }
+      return new_cond;
+    }
+  }
+  return 0;
+}
+
+
+void substitute_for_needed_clones(THD *thd, Item *cond)
+{
+  if (cond->type() == Item::COND_ITEM)
+  {
+    if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
+    {
+      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
+      Item *item;
+      while ((item=li++))
+	substitute_for_needed_clones(thd, item);
+    }
+    else
+    {							
+      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
+      Item *item;
+      while ((item=li++))
+      {
+        if (item->marker==1)
+	{
+	  Item *clone_it= item->build_clone(thd->mem_root);
+	  li.replace(clone_it);
+	}
+      }
+    }
+  }
+}

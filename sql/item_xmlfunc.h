@@ -105,6 +105,8 @@ public:
     Item_xml_str_func(thd, a, b) {}
   const char *func_name() const { return "extractvalue"; }
   String *val_str(String *);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_xml_extractvalue(*this); }
 };
 
 
@@ -119,6 +121,8 @@ public:
     Item_xml_str_func(thd, a, b, c) {}
   const char *func_name() const { return "updatexml"; }
   String *val_str(String *);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_xml_update(*this); }
 };
 
 #endif /* ITEM_XMLFUNC_INCLUDED */

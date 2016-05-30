@@ -105,6 +105,8 @@ public:
   String *val_str_ascii(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "md5"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_md5(*this); }
 };
 
 
@@ -114,7 +116,9 @@ public:
   Item_func_sha(THD *thd, Item *a): Item_str_ascii_func(thd, a) {}
   String *val_str_ascii(String *);    
   void fix_length_and_dec();      
-  const char *func_name() const { return "sha"; }	
+  const char *func_name() const { return "sha"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_sha(*this); }
 };
 
 class Item_func_sha2 :public Item_str_ascii_func
@@ -124,6 +128,8 @@ public:
   String *val_str_ascii(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "sha2"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_sha2(*this); }
 };
 
 class Item_func_to_base64 :public Item_str_ascii_func
@@ -134,6 +140,8 @@ public:
   String *val_str_ascii(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "to_base64"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_to_base64(*this); }
 };
 
 class Item_func_from_base64 :public Item_str_func
@@ -144,6 +152,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "from_base64"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_from_base64(*this); }
 };
 
 #include <my_crypt.h>
@@ -167,6 +177,8 @@ public:
     Item_aes_crypt(thd, a, b) {}
   void fix_length_and_dec();
   const char *func_name() const { return "aes_encrypt"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_aes_encrypt(*this); }
 };
 
 class Item_func_aes_decrypt :public Item_aes_crypt
@@ -176,6 +188,8 @@ public:
     Item_aes_crypt(thd, a, b) {}
   void fix_length_and_dec();
   const char *func_name() const { return "aes_decrypt"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_aes_decrypt(*this); }
 };
 
 
@@ -206,6 +220,8 @@ public:
     maybe_null= 1;
   }
   const char *func_name() const { return "decode_histogram"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_decode_histogram(*this); }
 };
 
 class Item_func_concat_ws :public Item_str_func
@@ -217,6 +233,8 @@ public:
   void fix_length_and_dec();
   const char *func_name() const { return "concat_ws"; }
   table_map not_null_tables() const { return 0; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_concat_ws(*this); }
 };
 
 class Item_func_reverse :public Item_str_func
@@ -227,6 +245,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "reverse"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_reverse(*this); }
 };
 
 
@@ -262,6 +282,8 @@ public:
   String *val_str(String *str);
   void fix_length_and_dec();
   const char *func_name() const { return "regexp_replace"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_regexp_replace(*this); }
 };
 
 
@@ -282,6 +304,8 @@ public:
   String *val_str(String *str);
   void fix_length_and_dec();
   const char *func_name() const { return "regexp_substr"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_regexp_substr(*this); }
 };
 
 
@@ -316,6 +340,8 @@ public:
   Item_func_lcase(THD *thd, Item *item): Item_str_conv(thd, item) {}
   const char *func_name() const { return "lcase"; }
   void fix_length_and_dec();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_lcase(*this); }
 };
 
 class Item_func_ucase :public Item_str_conv
@@ -324,6 +350,8 @@ public:
   Item_func_ucase(THD *thd, Item *item): Item_str_conv(thd, item) {}
   const char *func_name() const { return "ucase"; }
   void fix_length_and_dec();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_ucase(*this); }
 };
 
 
@@ -370,6 +398,9 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "substring_index"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_substr_index(*this); }
+
 };
 
 
@@ -412,6 +443,8 @@ public:
   String *val_str(String *);
   const char *func_name() const { return "ltrim"; }
   const char *mode_name() const { return "leading"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_ltrim(*this); }
 };
 
 
@@ -423,6 +456,8 @@ public:
   String *val_str(String *);
   const char *func_name() const { return "rtrim"; }
   const char *mode_name() const { return "trailing"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_rtrim(*this); }
 };
 
 
@@ -478,6 +513,8 @@ public:
     max_length = args[0]->max_length + 9;
   }
   const char *func_name() const { return "des_encrypt"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_des_encrypt(*this); }
 };
 
 class Item_func_des_decrypt :public Item_str_func
@@ -496,6 +533,8 @@ public:
       max_length-= 9U;
   }
   const char *func_name() const { return "des_decrypt"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_des_decrypt(*this); }
 };
 
 class Item_func_encrypt :public Item_str_func
@@ -523,6 +562,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_encrypt(*this); }
 };
 
 #include "sql_crypt.h"
@@ -541,6 +582,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "encode"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_encode(*this); }
 protected:
   virtual void crypto_transform(String *);
 private:
@@ -554,6 +597,8 @@ class Item_func_decode :public Item_func_encode
 public:
   Item_func_decode(THD *thd, Item *a, Item *seed_arg): Item_func_encode(thd, a, seed_arg) {}
   const char *func_name() const { return "decode"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_decode(*this); }
 protected:
   void crypto_transform(String *);
 };
@@ -670,6 +715,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "soundex"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_soundex(*this); }
 };
 
 
@@ -682,6 +729,8 @@ public:
   String *val_str(String *str);
   void fix_length_and_dec();
   const char *func_name() const { return "elt"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_elt(*this); }
 };
 
 
@@ -694,6 +743,8 @@ public:
   String *val_str(String *str);
   void fix_length_and_dec();
   const char *func_name() const { return "make_set"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_make_set(*this); }
 };
 
 
@@ -712,6 +763,8 @@ public:
   void fix_length_and_dec();
   const char *func_name() const { return "format"; }
   virtual void print(String *str, enum_query_type query_type);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_format(*this); }
 };
 
 
@@ -751,6 +804,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "space"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_space(*this); }
 };
 
 
@@ -763,6 +818,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "binlog_gtid_pos"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_binlog_gtid_pos(*this); }
 };
 
 
@@ -775,6 +832,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "rpad"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_rpad(*this); }
 };
 
 
@@ -787,6 +846,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "lpad"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_lpad(*this); }
 };
 
 
@@ -803,6 +864,8 @@ public:
     max_length=64;
     maybe_null= 1;
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_conv(*this); }
 };
 
 
@@ -820,6 +883,8 @@ public:
     decimals=0;
     fix_char_length(args[0]->max_length * 2);
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_hex(*this); }
 };
 
 class Item_func_unhex :public Item_str_func
@@ -839,6 +904,8 @@ public:
     decimals=0;
     max_length=(1+args[0]->max_length)/2;
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_unhex(*this); }
 };
 
 
@@ -869,6 +936,8 @@ public:
   Item_func_like_range_min(THD *thd, Item *a, Item *b):
     Item_func_like_range(thd, a, b, true) { }
   const char *func_name() const { return "like_range_min"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_like_range_min(*this); }
 };
 
 
@@ -878,6 +947,8 @@ public:
   Item_func_like_range_max(THD *thd, Item *a, Item *b):
     Item_func_like_range(thd, a, b, false) { }
   const char *func_name() const { return "like_range_max"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_like_range_max(*this); }
 };
 #endif
 
@@ -902,6 +973,8 @@ public:
   }
   virtual void print(String *str, enum_query_type query_type);
   const char *func_name() const { return "cast_as_binary"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_binary(*this); }
 };
 
 
@@ -922,6 +995,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_load_file(*this); }
 };
 
 
@@ -937,6 +1012,8 @@ class Item_func_export_set: public Item_str_func
   String  *val_str(String *str);
   void fix_length_and_dec();
   const char *func_name() const { return "export_set"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_export_set(*this); }
 };
 
 
@@ -954,6 +1031,8 @@ public:
                                   2 * collation.collation->mbmaxlen;
     max_length= (uint32) MY_MIN(max_result_length, MAX_BLOB_WIDTH);
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_quote(*this); }
 };
 
 class Item_func_conv_charset :public Item_str_func
@@ -1036,6 +1115,8 @@ public:
   void fix_length_and_dec();
   const char *func_name() const { return "convert"; }
   virtual void print(String *str, enum_query_type query_type);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_conv_charset(*this); }
 };
 
 class Item_func_set_collation :public Item_str_func
@@ -1134,6 +1215,8 @@ public:
   const char *func_name() const { return "crc32"; }
   void fix_length_and_dec() { max_length=10; }
   longlong val_int();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_crc32(*this); }
 };
 
 class Item_func_uncompressed_length : public Item_int_func
@@ -1144,6 +1227,8 @@ public:
   const char *func_name() const{return "uncompressed_length";}
   void fix_length_and_dec() { max_length=10; maybe_null= true; }
   longlong val_int();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_uncompressed_length(*this); }
 };
 
 #ifdef HAVE_COMPRESS
@@ -1160,6 +1245,8 @@ public:
   void fix_length_and_dec(){max_length= (args[0]->max_length*120)/100+12;}
   const char *func_name() const{return "compress";}
   String *val_str(String *) ZLIB_DEPENDED_FUNCTION
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_compress(*this); }
 };
 
 class Item_func_uncompress: public Item_str_func
@@ -1170,6 +1257,8 @@ public:
   void fix_length_and_dec(){ maybe_null= 1; max_length= MAX_BLOB_WIDTH; }
   const char *func_name() const{return "uncompress";}
   String *val_str(String *) ZLIB_DEPENDED_FUNCTION
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_uncompress(*this); }
 };
 
 
@@ -1189,6 +1278,8 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_uuid(*this); }
 };
 
 
@@ -1210,6 +1301,8 @@ public:
   String *val_str(String *);
   virtual void print(String *str, enum_query_type query_type);
   virtual enum Functype functype() const   { return DYNCOL_FUNC; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_dyncol_create(*this); }
 };
 
 
@@ -1222,6 +1315,8 @@ public:
   const char *func_name() const{ return "column_add"; }
   String *val_str(String *);
   virtual void print(String *str, enum_query_type query_type);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_dyncol_add(*this); }
 };
 
 class Item_func_dyncol_json: public Item_str_func
@@ -1237,6 +1332,8 @@ public:
     collation.set(&my_charset_bin);
     decimals= 0;
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_dyncol_json(*this); }
 };
 
 /*
@@ -1261,6 +1358,8 @@ public:
   bool get_dyn_value(THD *thd, DYNAMIC_COLUMN_VALUE *val, String *tmp);
   bool get_date(MYSQL_TIME *ltime, ulonglong fuzzydate);
   void print(String *str, enum_query_type query_type);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_dyncol_get(*this); }
 };
 
 
@@ -1271,6 +1370,8 @@ public:
   void fix_length_and_dec() { maybe_null= 1; max_length= MAX_BLOB_WIDTH; };
   const char *func_name() const{ return "column_list"; }
   String *val_str(String *);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_dyncol_list(*this); }
 };
 
 #endif /* ITEM_STRFUNC_INCLUDED */

@@ -345,6 +345,8 @@ public:
   void fix_after_pullout(st_select_lex *new_parent, Item **ref);
   bool invisible_mode();
   void reset_cache() { cache= NULL; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_in_optimizer(*this); }
 };
 
 
@@ -520,6 +522,8 @@ public:
     Item_args::propagate_equal_fields(thd, Context_boolean(), cond);
     return this;
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_xor(*this); }
 };
 
 class Item_func_not :public Item_bool_func
@@ -585,6 +589,8 @@ public:
   void add_key_fields(JOIN *join, KEY_FIELD **key_fields,
                       uint *and_level, table_map usable_tables,
                       SARGABLE_PARAM **sargables);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_trig_cond(*this); }
   
 };
 
@@ -876,6 +882,8 @@ public:
     agg_arg_charsets_for_comparison(cmp_collation, args, 2);
     fix_char_length(2); // returns "1" or "0" or "-1"
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_strcmp(*this); }
 };
 
 
@@ -1068,6 +1076,8 @@ public:
                                                          cond, &args[2]);
     return this;
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_nullif(*this); }
 };
 
 
@@ -2026,6 +2036,8 @@ public:
   longlong val_int();
   void fix_length_and_dec();
   const char *func_name() const { return "regexp_instr"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_regexp_instr(*this); }
 };
 
 
@@ -2457,6 +2469,8 @@ public:
   Item_func_dyncol_check(THD *thd, Item *str): Item_bool_func(thd, str) {}
   longlong val_int();
   const char *func_name() const { return "column_check"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_dyncol_check(*this); }
 };
 
 class Item_func_dyncol_exists :public Item_bool_func
@@ -2466,6 +2480,8 @@ public:
     Item_bool_func(thd, str, num) {}
   longlong val_int();
   const char *func_name() const { return "column_exists"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_dyncol_exists(*this); }
 };
 
 inline bool is_cond_or(Item *item)

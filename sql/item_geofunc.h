@@ -51,6 +51,8 @@ public:
     Item_geometry_func(thd, a, srid) {}
   const char *func_name() const { return "st_geometryfromtext"; }
   String *val_str(String *);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_geometry_from_text(*this); }
 };
 
 class Item_func_geometry_from_wkb: public Item_geometry_func
@@ -61,6 +63,8 @@ public:
     Item_geometry_func(thd, a, srid) {}
   const char *func_name() const { return "st_geometryfromwkb"; }
   String *val_str(String *);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_geometry_from_wkb(*this); }
 };
 
 class Item_func_as_wkt: public Item_str_ascii_func
@@ -70,6 +74,8 @@ public:
   const char *func_name() const { return "st_astext"; }
   String *val_str_ascii(String *);
   void fix_length_and_dec();
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_as_wkt(*this); }
 };
 
 class Item_func_as_wkb: public Item_geometry_func
@@ -79,6 +85,8 @@ public:
   const char *func_name() const { return "st_aswkb"; }
   String *val_str(String *);
   enum_field_types field_type() const  { return MYSQL_TYPE_BLOB; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_as_wkb(*this); }
 };
 
 class Item_func_geometry_type: public Item_str_ascii_func
@@ -93,6 +101,8 @@ public:
     fix_length_and_charset(20, default_charset());
     maybe_null= 1;
   };
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_geometry_type(*this); }
 };
 
 
@@ -125,6 +135,8 @@ public:
     {}
   const char *func_name() const { return "st_convexhull"; }
   String *val_str(String *);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_convexhull(*this); }
 };
 
 
@@ -135,6 +147,8 @@ public:
   const char *func_name() const { return "st_centroid"; }
   String *val_str(String *);
   Field::geometry_type get_geometry_type() const;
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_centroid(*this); }
 };
 
 class Item_func_envelope: public Item_geometry_func
@@ -144,6 +158,8 @@ public:
   const char *func_name() const { return "st_envelope"; }
   String *val_str(String *);
   Field::geometry_type get_geometry_type() const;
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_envelope(*this); }
 };
 
 
@@ -175,6 +191,8 @@ public:
   Item_func_boundary(THD *thd, Item *a): Item_geometry_func(thd, a) {}
   const char *func_name() const { return "st_boundary"; }
   String *val_str(String *);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_boundary(*this); }
 };
 
 
@@ -211,6 +229,8 @@ public:
     }
   }
   String *val_str(String *);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_spatial_decomp(*this); }
 };
 
 class Item_func_spatial_decomp_n: public Item_geometry_func
@@ -235,6 +255,8 @@ public:
     }
   }
   String *val_str(String *);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_spatial_decomp_n(*this); }
 };
 
 class Item_func_spatial_collection: public Item_geometry_func
@@ -310,6 +332,8 @@ public:
   { }
   longlong val_int();
   const char *func_name() const;
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_spatial_mbr_rel(*this); }
 };
 
 
@@ -324,6 +348,8 @@ public:
   { }
   longlong val_int();
   const char *func_name() const;
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_spatial_precise_rel(*this); }
 };
 
 
@@ -339,6 +365,8 @@ public:
   { }
   longlong val_int();
   const char *func_name() const { return "st_relate"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_spatial_relate(*this); }
 };
 
 
@@ -368,6 +396,8 @@ public:
   {
     Item_func::print(str, query_type);
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_spatial_operation(*this); }
 };
 
 
@@ -419,6 +449,8 @@ public:
     Item_geometry_func(thd, obj, distance) {}
   const char *func_name() const { return "st_buffer"; }
   String *val_str(String *);
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_buffer(*this); }
 };
 
 
@@ -429,6 +461,8 @@ public:
   longlong val_int();
   const char *func_name() const { return "st_isempty"; }
   void fix_length_and_dec() { maybe_null= 1; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_isempty(*this); }
 };
 
 class Item_func_issimple: public Item_int_func
@@ -443,6 +477,8 @@ public:
   const char *func_name() const { return "st_issimple"; }
   void fix_length_and_dec() { decimals=0; max_length=2; }
   uint decimal_precision() const { return 1; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_issimple(*this); }
 };
 
 class Item_func_isclosed: public Item_int_func
@@ -453,6 +489,8 @@ public:
   const char *func_name() const { return "st_isclosed"; }
   void fix_length_and_dec() { decimals=0; max_length=2; }
   uint decimal_precision() const { return 1; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_isclosed(*this); }
 };
 
 class Item_func_isring: public Item_func_issimple
@@ -461,6 +499,8 @@ public:
   Item_func_isring(THD *thd, Item *a): Item_func_issimple(thd, a) {}
   longlong val_int();
   const char *func_name() const { return "st_isring"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_isring(*this); }
 };
 
 class Item_func_dimension: public Item_int_func
@@ -471,6 +511,8 @@ public:
   longlong val_int();
   const char *func_name() const { return "st_dimension"; }
   void fix_length_and_dec() { max_length= 10; maybe_null= 1; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_dimension(*this); }
 };
 
 class Item_func_x: public Item_real_func
@@ -485,6 +527,8 @@ public:
     Item_real_func::fix_length_and_dec();
     maybe_null= 1; 
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_x(*this); }
 };
 
 
@@ -500,6 +544,8 @@ public:
     Item_real_func::fix_length_and_dec();
     maybe_null= 1; 
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_y(*this); }
 };
 
 
@@ -511,6 +557,8 @@ public:
   longlong val_int();
   const char *func_name() const { return "st_numgeometries"; }
   void fix_length_and_dec() { max_length= 10; maybe_null= 1; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_numgeometries(*this); }
 };
 
 
@@ -522,6 +570,8 @@ public:
   longlong val_int();
   const char *func_name() const { return "st_numinteriorrings"; }
   void fix_length_and_dec() { max_length= 10; maybe_null= 1; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_numinteriorring(*this); }
 };
 
 
@@ -533,6 +583,8 @@ public:
   longlong val_int();
   const char *func_name() const { return "st_numpoints"; }
   void fix_length_and_dec() { max_length= 10; maybe_null= 1; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_numpoints(*this); }
 };
 
 
@@ -548,6 +600,8 @@ public:
     Item_real_func::fix_length_and_dec();
     maybe_null= 1; 
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_area(*this); }
 };
 
 
@@ -563,6 +617,8 @@ public:
     Item_real_func::fix_length_and_dec();
     maybe_null= 1; 
   }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_glength(*this); }
 };
 
 
@@ -574,6 +630,8 @@ public:
   longlong val_int();
   const char *func_name() const { return "srid"; }
   void fix_length_and_dec() { max_length= 10; maybe_null= 1; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_srid(*this); }
 };
 
 
@@ -588,6 +646,8 @@ public:
   Item_func_distance(THD *thd, Item *a, Item *b): Item_real_func(thd, a, b) {}
   double val_real();
   const char *func_name() const { return "st_distance"; }
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_distance(*this); }
 };
 
 
@@ -602,6 +662,8 @@ public:
   const char *func_name() const { return "st_pointonsurface"; }
   String *val_str(String *);
   Field::geometry_type get_geometry_type() const;
+  Item *get_copy(MEM_ROOT *mem_root)
+  { return new (mem_root) Item_func_pointonsurface(*this); }
 };
 
 
@@ -613,6 +675,8 @@ class Item_func_gis_debug: public Item_int_func
     { null_value= false; }
     const char *func_name() const  { return "st_gis_debug"; }
     longlong val_int();
+    Item *get_copy(MEM_ROOT *mem_root)
+    { return new (mem_root) Item_func_gis_debug(*this); }
 };
 #endif
 

@@ -1128,11 +1128,16 @@ JOIN::optimize_inner()
   JOIN_TAB *tab;
   DBUG_ENTER("JOIN::optimize");
   Item *conds_copy;
+  Item *extract_cond;
   if (make_conds_copy)
   {
-    if (conds) {conds_copy= conds->build_clone(thd->mem_root);}
+    if (conds) 
+    {
+      conds_copy= conds->build_clone(thd->mem_root);
+      extract_cond= extract_cond_for_view(thd, conds, 1);
+      substitute_for_needed_clones(thd, extract_cond);
+    }
   }
-
   do_send_rows = (unit->select_limit_cnt) ? 1 : 0;
   // to prevent double initialization on EXPLAIN
   if (optimized)

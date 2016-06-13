@@ -2116,6 +2116,7 @@ public:
                 Item_transformer transformer, uchar *arg_t);
   bool eval_not_null_tables(uchar *opt_arg);
   Item *build_clone(MEM_ROOT *mem_root);
+  bool field_transformer(THD *thd, table_map map, st_select_lex *sl);
 };
 
 template <template<class> class LI, class T> class Item_equal_iterator;

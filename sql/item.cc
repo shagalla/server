@@ -2184,6 +2184,30 @@ Item* Item_func_or_sum::build_clone(MEM_ROOT *mem_root)
 }
 
 
+bool Item_func_or_sum::field_transformer(THD *thd, table_map map, st_select_lex *sl)
+{
+  for (uint i= 0; i < arg_count; i++)
+  {
+    if (args[i]->type() == FIELD_ITEM)
+    {
+      if (args[i]->used_tables() == map)
+      {
+	Item_ref *rf= 
+	  new (thd->mem_root) Item_ref(thd, &sl->context, 
+				       NullS, NullS,
+				       ((Item_field*) args[i])->field_name);
+	if (!rf)
+	  return true;
+	args[i]= rf;
+      }
+    }
+    else
+      args[i]->field_transformer(thd, map, sl);
+  }
+  return false;
+}
+
+
 void Item_ident_for_show::make_field(THD *thd, Send_field *tmp_field)
 {
   tmp_field->table_name= tmp_field->org_table_name= table_name;

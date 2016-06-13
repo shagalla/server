@@ -1005,7 +1005,10 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
       {
 	Item *fix= extract_cond_for_view(thd, item, view_map);
 	if (fix)
+	{
+	  fix->marker=2;
 	  new_cond->argument_list()->push_back(fix, thd->mem_root);
+	}
       }
       switch (new_cond->argument_list()->elements) 
       {
@@ -1024,12 +1027,12 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
 	return 0;			
       List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
       Item *item;
-      while ((item=li++))
+      while ((item= li++))
       {
 	Item *fix= extract_cond_for_view(thd, item, view_map);
 	if (!fix)
 	  return 0;
-	fix->marker=1;
+	fix->marker= 1;
 	new_cond->argument_list()->push_back(fix, thd->mem_root);
       }
       return new_cond;
@@ -1047,16 +1050,16 @@ void substitute_for_needed_clones(THD *thd, Item *cond)
     {
       List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
       Item *item;
-      while ((item=li++))
+      while ((item= li++))
 	substitute_for_needed_clones(thd, item);
     }
     else
     {							
       List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
       Item *item;
-      while ((item=li++))
+      while ((item= li++))
       {
-        if (item->marker==1)
+        if (item->marker == 1)
 	{
 	  Item *clone_it= item->build_clone(thd->mem_root);
 	  li.replace(clone_it);
@@ -1064,4 +1067,60 @@ void substitute_for_needed_clones(THD *thd, Item *cond)
       }
     }
   }
+}
+
+
+Item *delete_not_needed_parts(THD *thd, Item *cond)
+{
+  if (cond->type() == Item::COND_ITEM)
+  {
+    if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
+    {
+      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
+      Item *item;
+      while ((item= li++))
+      {
+	if (item->marker == 2)
+	  li.remove();
+      }
+      switch (((Item_cond*) cond)->argument_list()->elements) 
+      {
+      case 0:
+	return 0;			
+      case 1:
+	return ((Item_cond*) cond)->argument_list()->head();
+      default:
+	return cond;
+      }
+    }
+  }
+  return cond;
+}
+
+
+bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
+{
+  if (!cond)
+    return false;
+  Item *extract_cond;
+  extract_cond= extract_cond_for_view(thd, *cond, derived->table->map);
+  if (!extract_cond)
+    return true;
+  substitute_for_needed_clones(thd, extract_cond);
+  *(cond)= delete_not_needed_parts(thd, *cond);
+  st_select_lex_unit *unit= derived->get_unit();
+  st_select_lex *sl= unit->first_select();
+  for (; sl; sl= sl->next_select())
+  {
+    Item *extract_cond_cl= extract_cond;
+    if (sl->next_select())
+      extract_cond_cl= extract_cond->build_clone(thd->mem_root);
+    if (extract_cond_cl->field_transformer(thd, derived->table->map, sl))
+      return true;
+    extract_cond_cl->walk(&Item::cleanup_processor, 0, 0);
+    sl->having= and_conds(thd, sl->having, extract_cond_cl);
+    if (sl->having->fix_fields(thd, &sl->having))
+      return true;
+  }
+  return false;
 }

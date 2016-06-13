@@ -1107,7 +1107,6 @@ int JOIN::optimize()
 }
 
 
-bool make_conds_copy= false;
 /**
   global select optimisation.
 
@@ -1127,17 +1126,7 @@ JOIN::optimize_inner()
   uint no_jbuf_after;
   JOIN_TAB *tab;
   DBUG_ENTER("JOIN::optimize");
-  Item *conds_copy;
-  Item *extract_cond;
-  if (make_conds_copy)
-  {
-    if (conds) 
-    {
-      conds_copy= conds->build_clone(thd->mem_root);
-      extract_cond= extract_cond_for_view(thd, conds, 1);
-      substitute_for_needed_clones(thd, extract_cond);
-    }
-  }
+  dbug_print_item(conds);
   do_send_rows = (unit->select_limit_cnt) ? 1 : 0;
   // to prevent double initialization on EXPLAIN
   if (optimized)
@@ -1149,10 +1138,6 @@ JOIN::optimize_inner()
 
   set_allowed_join_cache_types();
   need_distinct= TRUE;
-
-  /* Run optimize phase for all derived tables/views used in this SELECT. */
-  if (select_lex->handle_derived(thd->lex, DT_OPTIMIZE))
-    DBUG_RETURN(1);
 
   if (select_lex->first_cond_optimization)
   {
@@ -1268,6 +1253,21 @@ JOIN::optimize_inner()
 
   conds= optimize_cond(this, conds, join_list, FALSE,
                        &cond_value, &cond_equal, OPT_LINK_EQUAL_FIELDS);
+  
+  TABLE_LIST *tbl;
+  List_iterator_fast<TABLE_LIST> li(select_lex->leaf_tables);
+  while ((tbl= li++))
+  {
+    if (tbl->is_materialized_derived())
+    {
+      if (pushdown_cond_for_derived(thd, &conds, tbl))
+	DBUG_RETURN(1);
+    }
+  }
+  
+  /* Run optimize phase for all derived tables/views used in this SELECT. */
+  if (select_lex->handle_derived(thd->lex, DT_OPTIMIZE))
+    DBUG_RETURN(1);
      
   if (thd->is_error())
   {

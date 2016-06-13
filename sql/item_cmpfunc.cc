@@ -4864,6 +4864,18 @@ Item *Item_cond::build_clone(MEM_ROOT *mem_root)
 }
 
 
+bool Item_cond::field_transformer(THD *thd, table_map map, st_select_lex *sl)
+{
+  List_iterator_fast<Item> li(list);
+  Item *item;
+  while ((item= li++))
+  {
+    item->field_transformer(thd, map, sl);
+  }
+  return false;
+}
+
+
 void Item_cond_and::mark_as_condition_AND_part(TABLE_LIST *embedding)
 {
   List_iterator<Item> li(list);

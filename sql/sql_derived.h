@@ -41,4 +41,8 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map);
 
 void substitute_for_needed_clones(THD *thd, Item *cond);
 
+Item *delete_not_needed_parts(THD *thd, Item *cond);
+
+bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived);
+
 #endif /* SQL_DERIVED_INCLUDED */

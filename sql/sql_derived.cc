@@ -988,6 +988,10 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
 }
 
 
+/**
+  Extract condition, which depends only on view.
+*/ 
+
 Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map) 
 {
   if (cond->depends_only_on(view_map))
@@ -1006,7 +1010,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
 	Item *fix= extract_cond_for_view(thd, item, view_map);
 	if (fix)
 	{
-	  fix->marker=2;
+	  fix->marker= 2;
 	  new_cond->argument_list()->push_back(fix, thd->mem_root);
 	}
       }
@@ -1027,7 +1031,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
 	return 0;			
       List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
       Item *item;
-      while ((item= li++))
+      while ((item=li++))
       {
 	Item *fix= extract_cond_for_view(thd, item, view_map);
 	if (!fix)
@@ -1041,6 +1045,10 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
   return 0;
 }
 
+
+/**
+  Making clones for OR-conditions, which depends on view.
+*/ 
 
 void substitute_for_needed_clones(THD *thd, Item *cond)
 {
@@ -1070,6 +1078,10 @@ void substitute_for_needed_clones(THD *thd, Item *cond)
 }
 
 
+/**
+  Delete conditions which we will push down into view/derived table.
+*/ 
+
 Item *delete_not_needed_parts(THD *thd, Item *cond)
 {
   if (cond->type() == Item::COND_ITEM)
@@ -1097,19 +1109,122 @@ Item *delete_not_needed_parts(THD *thd, Item *cond)
   return cond;
 }
 
+static
+void collect_grouping_fields(THD *thd, TABLE_LIST *derived, 
+			     st_select_lex *sl, 
+			     List<Grouping_tmp_field> *fields_list) 
+{
+  List_iterator<Item> li(sl->join->fields_list);
+  Item *item= li++;
+  for (uint i= 0; i < derived->table->s->fields; i++, (item=li++))
+  {
+    for (ORDER *ord= sl->join->group_list; ord; ord= ord->next)
+    {
+      if ((*ord->item)->eq((Item*)item, 0))
+      {
+	Grouping_tmp_field *grouping_tmp_field= 
+	  new Grouping_tmp_field(derived->table->field[i], item);
+	fields_list->push_back(grouping_tmp_field);
+      }
+    }
+  }
+}
+
+
+/**
+  Extract conditions which depends only on fields.
+*/ 
+static
+Item *extract_cond_for_grouping_fields(THD *thd, Item *cond, List<Grouping_tmp_field> *fields)
+{
+  if (cond->check_condition_fields(fields))
+    return cond;	
+  if (cond->type() == Item::COND_ITEM)
+  {
+    if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
+    {
+      Item_cond_and *new_cond=new (thd->mem_root) Item_cond_and(thd);
+      if (!new_cond)
+	return 0;		
+      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
+      Item *item;
+      while ((item=li++))
+      {
+	if (item->check_condition_fields(fields))
+	{
+	  item->marker= 2;
+	  new_cond->argument_list()->push_back(item, thd->mem_root);
+	}
+      }
+      switch (new_cond->argument_list()->elements) 
+      {
+      case 0:
+	return 0;			
+      case 1:
+	return new_cond->argument_list()->head();
+      default:
+	return new_cond;
+      }
+    }
+    else
+    {					
+      Item_cond_or *new_cond=new (thd->mem_root) Item_cond_or(thd);
+      if (!new_cond)
+	return 0;			
+      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
+      Item *item;
+      while ((item=li++))
+      {
+	if (!item->check_condition_fields(fields))
+	  return 0;
+	item->marker= 1;
+	new_cond->argument_list()->push_back(item, thd->mem_root);
+      }
+      return new_cond;
+    }
+  }
+  return 0;
+}
+
+
+/**
+  Pushing down conditions into HAVING-part of view/derived table.
+*/ 
 
 bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 {
   if (!cond)
     return false;
   Item *extract_cond;
+  /** Building AND OR structure, consisting condition 
+      which is going to be pushed down*/
   extract_cond= extract_cond_for_view(thd, *cond, derived->table->map);
   if (!extract_cond)
-    return true;
+    return false;
   substitute_for_needed_clones(thd, extract_cond);
-  *(cond)= delete_not_needed_parts(thd, *cond);
-  st_select_lex_unit *unit= derived->get_unit();
+    st_select_lex_unit *unit= derived->get_unit();
   st_select_lex *sl= unit->first_select();
+  for (; sl; sl= sl->next_select())
+  {
+    List<Grouping_tmp_field> grouping_tmp_field;
+    collect_grouping_fields(thd, derived, sl, &grouping_tmp_field);
+    Item *extract_fields= 
+    extract_cond_for_grouping_fields(thd, extract_cond, &grouping_tmp_field);
+    substitute_for_needed_clones(thd, extract_fields);
+    *(cond)= delete_not_needed_parts(thd, *cond);
+    Item *extract_cond_cl_field= extract_fields;
+    if (sl->next_select())
+      extract_cond_cl_field= extract_cond->build_clone(thd->mem_root);
+    if (extract_cond_cl_field->field_transformer_for_where(thd, 
+							   &grouping_tmp_field))
+      return true;
+    extract_cond_cl_field->walk(&Item::cleanup_processor, 0, 0);
+    sl->join->conds= and_conds(thd, sl->join->conds, extract_cond_cl_field);
+    if (sl->join->conds->fix_fields(thd, &sl->join->conds))
+      return true;
+  }
+  *(cond)= delete_not_needed_parts(thd, *cond);
+  sl= unit->first_select();
   for (; sl; sl= sl->next_select())
   {
     Item *extract_cond_cl= extract_cond;
@@ -1118,8 +1233,8 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
     if (extract_cond_cl->field_transformer(thd, derived->table->map, sl))
       return true;
     extract_cond_cl->walk(&Item::cleanup_processor, 0, 0);
-    sl->having= and_conds(thd, sl->having, extract_cond_cl);
-    if (sl->having->fix_fields(thd, &sl->having))
+    sl->join->having= and_conds(thd, sl->join->having, extract_cond_cl);
+    if (sl->join->having->fix_fields(thd, &sl->join->having))
       return true;
   }
   return false;

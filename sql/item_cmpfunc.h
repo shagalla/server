@@ -26,6 +26,7 @@
 #include "item_func.h"             /* Item_int_func, Item_bool_func */
 #define PCRE_STATIC 1             /* Important on Windows */
 #include "pcre.h"                 /* pcre header file */
+#include "item.h"
 
 extern Item_result item_cmp_type(Item_result a,Item_result b);
 inline Item_result item_cmp_type(const Item *a, const Item *b)
@@ -2117,6 +2118,9 @@ public:
   bool eval_not_null_tables(uchar *opt_arg);
   Item *build_clone(MEM_ROOT *mem_root);
   bool field_transformer(THD *thd, table_map map, st_select_lex *sl);
+  bool check_condition_fields(List<Grouping_tmp_field> *fields);
+  bool field_transformer_for_where(THD *thd,
+                                   List<Grouping_tmp_field> *fields_list);
 };
 
 template <template<class> class LI, class T> class Item_equal_iterator;

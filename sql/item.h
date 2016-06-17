@@ -605,6 +605,16 @@ public:
 };
 
 
+class Grouping_tmp_field :public Sql_alloc
+{
+public:
+  Field *tmp_field;
+  Item *producing_item;
+  Grouping_tmp_field(Field *fld, Item *item) 
+     :tmp_field(fld), producing_item(item) {}
+};
+
+
 class Item: public Value_source,
             public Type_std_attributes,
             public Type_handler
@@ -1107,8 +1117,16 @@ public:
   /* cloning of constant items (0 if it is not const) */
   virtual Item *clone_item(THD *thd) { return 0; }
   virtual Item* build_clone(MEM_ROOT *mem_root) { return get_copy(mem_root); }
-  virtual bool depends_only_on(table_map view_map) { return ((used_tables() & (~view_map)) == 0); }
-  virtual bool field_transformer(THD *thd, table_map map, st_select_lex *sl) { return false; }
+  virtual bool depends_only_on(table_map view_map) 
+  { return ((used_tables() & (~view_map)) == 0); }
+  virtual bool field_transformer(THD *thd, table_map map, st_select_lex *sl) 
+  { return false; }
+  virtual bool check_condition_fields(List<Grouping_tmp_field> *fields) 
+  { return true; }
+  virtual bool 
+    field_transformer_for_where(THD *thd, 
+                                List<Grouping_tmp_field> *fields_list)
+  { return true; }
   virtual cond_result eq_cmp_result() const { return COND_OK; }
   inline uint float_length(uint decimals_par) const
   { return decimals != NOT_FIXED_DEC ? (DBL_DIG+2+decimals_par) : DBL_DIG+8;}
@@ -3913,6 +3931,9 @@ public:
   table_map used_tables() const { return used_tables_cache; }
   Item* build_clone(MEM_ROOT *mem_root);
   bool field_transformer(THD *thd, table_map map, st_select_lex *sl);
+  bool check_condition_fields(List<Grouping_tmp_field> *fields);
+  bool field_transformer_for_where(THD *thd,
+                                   List<Grouping_tmp_field> *fields_list);
 };
 
 

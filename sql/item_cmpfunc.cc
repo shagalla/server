@@ -4870,7 +4870,36 @@ bool Item_cond::field_transformer(THD *thd, table_map map, st_select_lex *sl)
   Item *item;
   while ((item= li++))
   {
-    item->field_transformer(thd, map, sl);
+    if (item->field_transformer(thd, map, sl))
+      return true;
+  }
+  return false;
+}
+
+
+bool Item_cond::check_condition_fields(List<Grouping_tmp_field> *fields)
+{
+  List_iterator_fast<Item> li(list);
+  Item *item;
+  while ((item= li++))
+  {
+    if (!item->check_condition_fields(fields))
+      return false;
+  }
+  return true;
+}
+
+
+bool Item_cond::
+  field_transformer_for_where(THD *thd,
+			      List<Grouping_tmp_field> *fields_list)
+{
+  List_iterator_fast<Item> li(list);
+  Item *item;
+  while ((item= li++))
+  {
+    if (item->field_transformer_for_where(thd, fields_list))
+      return true;
   }
   return false;
 }

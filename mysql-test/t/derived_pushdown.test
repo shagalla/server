@@ -1,0 +1,4 @@
+create table t1 (a int, b int);     
+insert into t1 values (1,2), (2,3), (3,4), (4,5);    
+
+select * from (select a, max(b) as m from t1 group by a having m < 10) v1, t1 where v1.a>3 and t1.b<4;

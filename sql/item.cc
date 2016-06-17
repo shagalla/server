@@ -2161,6 +2161,11 @@ bool Item_func_or_sum::agg_item_set_converter(const DTCollation &coll,
 }
 
 
+/**
+  Building function clone.
+  Recursive procedure.
+*/
+
 Item* Item_func_or_sum::build_clone(MEM_ROOT *mem_root)
 {
   Item_func_or_sum *copy= (Item_func_or_sum *) get_copy(mem_root);
@@ -2170,7 +2175,8 @@ Item* Item_func_or_sum::build_clone(MEM_ROOT *mem_root)
   if (!arg_cop)
     return 0;
   if (arg_count > 2)
-    copy->args= (Item**) alloc_root(mem_root, sizeof(Item*) * arg_count);
+    copy->args= 
+      (Item**) alloc_root(mem_root, sizeof(Item*) * arg_count);
   else if (arg_count > 0)
     copy->args= copy->tmp_arg;
   for (uint i= 0; i < arg_count; i++)
@@ -2184,7 +2190,14 @@ Item* Item_func_or_sum::build_clone(MEM_ROOT *mem_root)
 }
 
 
-bool Item_func_or_sum::field_transformer(THD *thd, table_map map, st_select_lex *sl)
+/**
+  Making from field with view name (ex: v1.a) 
+  field without it (ex: a).
+  Recursive procedure.
+*/
+
+bool Item_func_or_sum::field_transformer(THD *thd, table_map map, 
+					 st_select_lex *sl)
 {
   for (uint i= 0; i < arg_count; i++)
   {
@@ -2203,6 +2216,57 @@ bool Item_func_or_sum::field_transformer(THD *thd, table_map map, st_select_lex 
     }
     else
       args[i]->field_transformer(thd, map, sl);
+  }
+  return false;
+}
+
+
+/**
+  Check if fields which are used in condition are the same as
+  field_list.
+*/ 
+
+bool Item_func_or_sum::check_condition_fields(List<Grouping_tmp_field> *fields)
+{
+  for (uint i= 0; i < arg_count; i++)
+  {
+    if (args[i]->type() == FIELD_ITEM)
+    {
+      List_iterator<Grouping_tmp_field> li(*fields);
+      Grouping_tmp_field *field;
+      while ((field=li++))
+      {
+        if (((Item_field*) args[i])->field == field->tmp_field)
+          break;
+      }
+      if (!field)
+        return false;
+    }
+    else
+      args[i]->check_condition_fields(fields);
+  }
+  return true;
+}
+
+
+bool Item_func_or_sum::
+  field_transformer_for_where(THD *thd,
+                              List<Grouping_tmp_field> *fields_list)
+{
+  for (uint i= 0; i < arg_count; i++)
+  {
+    if (args[i]->type() == FIELD_ITEM)
+    {
+      List_iterator<Grouping_tmp_field> li(*fields_list);
+      Grouping_tmp_field *field;
+      while ((field=li++))
+      {
+	if (((Item_field*) args[i])->field == field->tmp_field)
+	  args[i]= field->producing_item->build_clone(thd->mem_root);
+      }
+    }
+    else
+      args[i]->field_transformer_for_where(thd, fields_list);
   }
   return false;
 }

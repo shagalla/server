@@ -1084,6 +1084,11 @@ void substitute_for_needed_clones(THD *thd, Item *cond)
 
 Item *delete_not_needed_parts(THD *thd, Item *cond)
 {
+  if (cond->marker == 2)
+  {
+    cond->marker= 0;
+    return 0; 
+  }
   if (cond->type() == Item::COND_ITEM)
   {
     if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
@@ -1093,7 +1098,10 @@ Item *delete_not_needed_parts(THD *thd, Item *cond)
       while ((item= li++))
       {
 	if (item->marker == 2)
+	{
+	  item->marker= 0;
 	  li.remove();
+	}
       }
       switch (((Item_cond*) cond)->argument_list()->elements) 
       {
@@ -1202,7 +1210,8 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   if (!extract_cond)
     return false;
   substitute_for_needed_clones(thd, extract_cond);
-    st_select_lex_unit *unit= derived->get_unit();
+  *(cond)= delete_not_needed_parts(thd, *cond);
+  st_select_lex_unit *unit= derived->get_unit();
   st_select_lex *sl= unit->first_select();
   for (; sl; sl= sl->next_select())
   {
@@ -1211,7 +1220,7 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
     Item *extract_fields= 
     extract_cond_for_grouping_fields(thd, extract_cond, &grouping_tmp_field);
     substitute_for_needed_clones(thd, extract_fields);
-    *(cond)= delete_not_needed_parts(thd, *cond);
+    extract_cond= delete_not_needed_parts(thd, extract_cond);
     Item *extract_cond_cl_field= extract_fields;
     if (sl->next_select())
       extract_cond_cl_field= extract_cond->build_clone(thd->mem_root);
@@ -1220,10 +1229,14 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
       return true;
     extract_cond_cl_field->walk(&Item::cleanup_processor, 0, 0);
     sl->join->conds= and_conds(thd, sl->join->conds, extract_cond_cl_field);
+    st_select_lex *save_curr_select= thd->lex->current_select;
+    thd->lex->current_select= sl;
     if (sl->join->conds->fix_fields(thd, &sl->join->conds))
       return true;
+    thd->lex->current_select= save_curr_select;
   }
-  *(cond)= delete_not_needed_parts(thd, *cond);
+  if (!extract_cond)
+    return false;
   sl= unit->first_select();
   for (; sl; sl= sl->next_select())
   {

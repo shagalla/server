@@ -1207,7 +1207,7 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond, List<Grouping_tmp_f
 
 bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 {
-  if (!cond)
+  if (!*cond)
     return false;
   Item *extract_cond;
   /** Building AND OR structure, consisting condition 

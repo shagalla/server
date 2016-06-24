@@ -995,7 +995,10 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
 Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map) 
 {
   if (cond->depends_only_on(view_map))
+  {
+    cond->marker= 2;
     return cond;	
+  }
   if (cond->type() == Item::COND_ITEM)
   {
     if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
@@ -1146,7 +1149,10 @@ static
 Item *extract_cond_for_grouping_fields(THD *thd, Item *cond, List<Grouping_tmp_field> *fields)
 {
   if (cond->check_condition_fields(fields))
+  {
+    cond->marker= 2;
     return cond;	
+  }
   if (cond->type() == Item::COND_ITEM)
   {
     if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
@@ -1219,6 +1225,8 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
     collect_grouping_fields(thd, derived, sl, &grouping_tmp_field);
     Item *extract_fields= 
     extract_cond_for_grouping_fields(thd, extract_cond, &grouping_tmp_field);
+    if (!extract_fields)
+      break;
     substitute_for_needed_clones(thd, extract_fields);
     extract_cond= delete_not_needed_parts(thd, extract_cond);
     Item *extract_cond_cl_field= extract_fields;
@@ -1247,8 +1255,13 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
       return true;
     extract_cond_cl->walk(&Item::cleanup_processor, 0, 0);
     sl->join->having= and_conds(thd, sl->join->having, extract_cond_cl);
+    st_select_lex *save_curr_select= thd->lex->current_select;
+    thd->lex->current_select= sl;
+    sl->having_fix_field= 1;
     if (sl->join->having->fix_fields(thd, &sl->join->having))
       return true;
+    sl->having_fix_field= 0;
+    thd->lex->current_select= save_curr_select;
   }
   return false;
 }

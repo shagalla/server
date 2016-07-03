@@ -1858,7 +1858,19 @@ public:
   */
   virtual void under_not(Item_func_not * upper
                          __attribute__((unused))) {};
+	
+
+  void register_in(THD *thd);	 
 };
+
+
+template <class T>
+inline T* get_copy (THD *thd, MEM_ROOT *mem_root, T* item)
+{
+  Item *copy= new (mem_root) T(item);
+  copy->register_in(thd);
+  return (T) copy;
+}	
 
 
 /**

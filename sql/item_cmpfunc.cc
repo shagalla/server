@@ -4857,7 +4857,7 @@ Item *Item_cond::build_clone(MEM_ROOT *mem_root)
     Item *arg_clone= item->build_clone(mem_root);
     if (!arg_clone)
       return 0;
-    if (copy->list.push_back(item, mem_root))
+    if (copy->list.push_back(arg_clone, mem_root))
       return 0;
   }
   return copy;

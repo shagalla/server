@@ -1,0 +1,646 @@
+create table t1 (a int, b int, c int);
+create table t2 (a int, b int, c int, d decimal);
+insert into t1 values 
+(1,21,345), (1,33,7), (8,33,114), (1,21,500), (1,19,107), (5,14,787),
+(8,33,123), (9,10,211), (5,16,207), (1,33,988), (5,27,132), (1,21,104),
+(6,20,309), (6,20,315), (1,21,101), (8,33,404), (9,10,800), (1,21,123),
+(7,11,708), (6,20,214);
+insert into t2 values
+(2,3,207,207.0000), (1,21,909,12.0000), (7,13,312,406.0000), 
+(8,64,248,107.0000), (6,20,315,279.3333), (1,19,203,107.0000),
+(8,80,800,314.0000), (3,12,231,190.0000), (6,23,303,909.0000);
+Warnings:
+Note	1265	Data truncated for column 'd' at row 5
+create view v1 as select a, b, max(c) as max_c, avg(c) as avg_c from t1 
+group by a,b having max_c < 707;
+select * from v1,t2 where (v1.max_c>214) and (t2.a>v1.a);
+a	b	max_c	avg_c	a	b	c	d
+1	21	500	234.6000	2	3	207	207
+1	21	500	234.6000	7	13	312	406
+1	21	500	234.6000	8	64	248	107
+1	21	500	234.6000	6	20	315	279
+1	21	500	234.6000	8	80	800	314
+1	21	500	234.6000	3	12	231	190
+1	21	500	234.6000	6	23	303	909
+6	20	315	279.3333	7	13	312	406
+6	20	315	279.3333	8	64	248	107
+6	20	315	279.3333	8	80	800	314
+explain format=json select * from v1,t2 where (v1.max_c>214) and (t2.a>v1.a);
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(t2.a > v1.a)",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and (max_c > 214))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+select * from v1,t2 where 
+((v1.max_c>400) and (t2.a>v1.a)) or ((v1.max_c<135) and (t2.a<v1.a));
+a	b	max_c	avg_c	a	b	c	d
+1	21	500	234.6000	2	3	207	207
+1	21	500	234.6000	7	13	312	406
+1	21	500	234.6000	8	64	248	107
+1	21	500	234.6000	6	20	315	279
+1	21	500	234.6000	8	80	800	314
+1	21	500	234.6000	3	12	231	190
+1	21	500	234.6000	6	23	303	909
+5	27	132	132.0000	2	3	207	207
+5	27	132	132.0000	1	21	909	12
+5	27	132	132.0000	1	19	203	107
+5	27	132	132.0000	3	12	231	190
+explain format=json
+select * from v1,t2 where 
+((v1.max_c>400) and (t2.a>v1.a)) or ((v1.max_c<135) and (t2.a<v1.a));
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100,
+        "attached_condition": "((v1.max_c > 400) or (v1.max_c < 135))"
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(((v1.max_c > 400) and (t2.a > v1.a)) or ((v1.max_c < 135) and (t2.a < v1.a)))",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and ((max_c > 400) or (max_c < 135)))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+select * from v1,t2 where (v1.a>6) and (t2.b>v1.b);
+a	b	max_c	avg_c	a	b	c	d
+8	33	404	213.6667	8	64	248	107
+8	33	404	213.6667	8	80	800	314
+explain format=json select * from v1,t2 where (v1.a>6) and (t2.b>v1.b);
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(t2.b > v1.b)",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "(max_c < 707)",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100,
+                "attached_condition": "(t1.a > 6)"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+select * from v1,t2 where 
+((v1.a>7) and (t2.c<v1.max_c)) or ((v1.a<2) and (t2.b<v1.b));
+a	b	max_c	avg_c	a	b	c	d
+1	19	107	107.0000	2	3	207	207
+1	19	107	107.0000	7	13	312	406
+1	19	107	107.0000	3	12	231	190
+1	21	500	234.6000	2	3	207	207
+1	21	500	234.6000	7	13	312	406
+1	21	500	234.6000	6	20	315	279
+1	21	500	234.6000	1	19	203	107
+1	21	500	234.6000	3	12	231	190
+8	33	404	213.6667	2	3	207	207
+8	33	404	213.6667	7	13	312	406
+8	33	404	213.6667	8	64	248	107
+8	33	404	213.6667	6	20	315	279
+8	33	404	213.6667	1	19	203	107
+8	33	404	213.6667	3	12	231	190
+8	33	404	213.6667	6	23	303	909
+explain format=json
+select * from v1,t2 where 
+((v1.a>7) and (t2.c<v1.max_c)) or ((v1.a<2) and (t2.b<v1.b));
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100,
+        "attached_condition": "((v1.a > 7) or (v1.a < 2))"
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(((v1.a > 7) and (t2.c < v1.max_c)) or ((v1.a < 2) and (t2.b < v1.b)))",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "(max_c < 707)",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100,
+                "attached_condition": "((t1.a > 7) or (t1.a < 2))"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+select * from v1,t2 where (v1.a<2) and (v1.max_c>400) and (t2.b>v1.b);
+a	b	max_c	avg_c	a	b	c	d
+1	21	500	234.6000	8	64	248	107
+1	21	500	234.6000	8	80	800	314
+1	21	500	234.6000	6	23	303	909
+explain format=json 
+select * from v1,t2 where (v1.a<2) and (v1.max_c>400) and (t2.b>v1.b);
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(t2.b > v1.b)",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and (max_c > 400))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100,
+                "attached_condition": "(t1.a < 2)"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+select * from v1,t2 where 
+((v1.a>7) and (v1.max_c>300) and (t2.c<v1.max_c)) or 
+((v1.a<4) and (v1.max_c<500) and (t2.b<v1.b));
+a	b	max_c	avg_c	a	b	c	d
+1	19	107	107.0000	2	3	207	207
+1	19	107	107.0000	7	13	312	406
+1	19	107	107.0000	3	12	231	190
+8	33	404	213.6667	2	3	207	207
+8	33	404	213.6667	7	13	312	406
+8	33	404	213.6667	8	64	248	107
+8	33	404	213.6667	6	20	315	279
+8	33	404	213.6667	1	19	203	107
+8	33	404	213.6667	3	12	231	190
+8	33	404	213.6667	6	23	303	909
+explain format=json
+select * from v1,t2 where 
+((v1.a>7) and (v1.max_c>300) and (t2.c<v1.max_c)) or 
+((v1.a<4) and (v1.max_c<500) and (t2.b<v1.b));
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100,
+        "attached_condition": "(((v1.a > 7) and (v1.max_c > 300)) or ((v1.a < 4) and (v1.max_c < 500)))"
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(((v1.a > 7) and (v1.max_c > 300) and (t2.c < v1.max_c)) or ((v1.a < 4) and (v1.max_c < 500) and (t2.b < v1.b)))",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and (((t1.a > 7) and (max_c > 300)) or ((t1.a < 4) and (max_c < 500))))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100,
+                "attached_condition": "((t1.a > 7) or (t1.a < 4))"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+select * from v1,t2 where ((v1.a<2) and (v1.max_c>120)) or (v1.a>7);
+a	b	max_c	avg_c	a	b	c	d
+1	21	500	234.6000	2	3	207	207
+1	21	500	234.6000	1	21	909	12
+1	21	500	234.6000	7	13	312	406
+1	21	500	234.6000	8	64	248	107
+1	21	500	234.6000	6	20	315	279
+1	21	500	234.6000	1	19	203	107
+1	21	500	234.6000	8	80	800	314
+1	21	500	234.6000	3	12	231	190
+1	21	500	234.6000	6	23	303	909
+8	33	404	213.6667	2	3	207	207
+8	33	404	213.6667	1	21	909	12
+8	33	404	213.6667	7	13	312	406
+8	33	404	213.6667	8	64	248	107
+8	33	404	213.6667	6	20	315	279
+8	33	404	213.6667	1	19	203	107
+8	33	404	213.6667	8	80	800	314
+8	33	404	213.6667	3	12	231	190
+8	33	404	213.6667	6	23	303	909
+explain format=json 
+select * from v1,t2 where ((v1.a<2) and (v1.max_c>120)) or (v1.a>7);
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and (((t1.a < 2) and (max_c > 120)) or (t1.a > 7)))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100,
+                "attached_condition": "((t1.a < 2) or (t1.a > 7))"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+create view v2 as select a, b, max(c) as max_c, avg(c) as avg_c from t1 
+where t1.a>5 group by a,b having max_c < 707;
+select * from v2,t2 where (v2.b>25) and (t2.a<v2.a);
+a	b	max_c	avg_c	a	b	c	d
+8	33	404	213.6667	2	3	207	207
+8	33	404	213.6667	1	21	909	12
+8	33	404	213.6667	7	13	312	406
+8	33	404	213.6667	6	20	315	279
+8	33	404	213.6667	1	19	203	107
+8	33	404	213.6667	3	12	231	190
+8	33	404	213.6667	6	23	303	909
+explain format=json select * from v2,t2 where (v2.b>25) and (t2.a<v2.a);
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(t2.a < v2.a)",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "(max_c < 707)",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100,
+                "attached_condition": "((t1.a > 5) and (t1.b > 25))"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+select * from v2,t2 where 
+((v2.a>7) and (t2.c<v2.max_c)) or ((v2.a>5) and (t2.b<v2.b));
+a	b	max_c	avg_c	a	b	c	d
+6	20	315	279.3333	2	3	207	207
+6	20	315	279.3333	7	13	312	406
+6	20	315	279.3333	1	19	203	107
+6	20	315	279.3333	3	12	231	190
+8	33	404	213.6667	2	3	207	207
+8	33	404	213.6667	1	21	909	12
+8	33	404	213.6667	7	13	312	406
+8	33	404	213.6667	8	64	248	107
+8	33	404	213.6667	6	20	315	279
+8	33	404	213.6667	1	19	203	107
+8	33	404	213.6667	3	12	231	190
+8	33	404	213.6667	6	23	303	909
+explain format=json 
+select * from v2,t2 where 
+((v2.a>7) and (t2.c<v2.max_c)) or ((v2.a>5) and (t2.b<v2.b));
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100,
+        "attached_condition": "((v2.a > 7) or (v2.a > 5))"
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(((v2.a > 7) and (t2.c < v2.max_c)) or ((v2.a > 5) and (t2.b < v2.b)))",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "(max_c < 707)",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100,
+                "attached_condition": "((t1.a > 5) and ((t1.a > 7) or (t1.a > 5)))"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+prepare stmt from "select * from v1,t2 where 
+  ((v1.max_c>400) and (t2.a>v1.a)) or ((v1.max_c<135) and (t2.a<v1.a));";
+execute stmt;
+a	b	max_c	avg_c	a	b	c	d
+1	21	500	234.6000	2	3	207	207
+1	21	500	234.6000	7	13	312	406
+1	21	500	234.6000	8	64	248	107
+1	21	500	234.6000	6	20	315	279
+1	21	500	234.6000	8	80	800	314
+1	21	500	234.6000	3	12	231	190
+1	21	500	234.6000	6	23	303	909
+5	27	132	132.0000	2	3	207	207
+5	27	132	132.0000	1	21	909	12
+5	27	132	132.0000	1	19	203	107
+5	27	132	132.0000	3	12	231	190
+execute stmt;
+a	b	max_c	avg_c	a	b	c	d
+1	21	500	234.6000	2	3	207	207
+5	27	132	132.0000	2	3	207	207
+5	27	132	132.0000	1	21	909	12
+1	21	500	234.6000	7	13	312	406
+1	21	500	234.6000	8	64	248	107
+1	21	500	234.6000	6	20	315	279
+5	27	132	132.0000	1	19	203	107
+1	21	500	234.6000	8	80	800	314
+1	21	500	234.6000	3	12	231	190
+5	27	132	132.0000	3	12	231	190
+1	21	500	234.6000	6	23	303	909
+deallocate prepare stmt;
+prepare stmt from 
+"explain format=json select * from v1,t2 where 
+    ((v1.max_c>400) and (t2.a>v1.a)) or ((v1.max_c<135) and (t2.a<v1.a));";
+execute stmt;
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100,
+        "attached_condition": "((v1.max_c > 400) or (v1.max_c < 135))"
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(((v1.max_c > 400) and (t2.a > v1.a)) or ((v1.max_c < 135) and (t2.a < v1.a)))",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and ((max_c > 400) or (max_c < 135)))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+execute stmt;
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100,
+        "attached_condition": "((v1.max_c > 400) or (v1.max_c < 135))"
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(((v1.max_c > 400) and (t2.a > v1.a)) or ((v1.max_c < 135) and (t2.a < v1.a)))",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and ((max_c > 400) or (max_c < 135)))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+deallocate prepare stmt;

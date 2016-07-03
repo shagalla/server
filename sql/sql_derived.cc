@@ -1146,7 +1146,8 @@ void collect_grouping_fields(THD *thd, TABLE_LIST *derived,
   Extract conditions which depends only on fields.
 */ 
 static
-Item *extract_cond_for_grouping_fields(THD *thd, Item *cond, List<Grouping_tmp_field> *fields)
+Item *extract_cond_for_grouping_fields(THD *thd, Item *cond, 
+				       List<Grouping_tmp_field> *fields)
 {
   if (cond->check_condition_fields(fields))
   {
@@ -1164,10 +1165,11 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond, List<Grouping_tmp_f
       Item *item;
       while ((item=li++))
       {
-	if (item->check_condition_fields(fields))
+	Item *fix= extract_cond_for_grouping_fields(thd, item, fields);
+	if (fix && fix->check_condition_fields(fields))
 	{
-	  item->marker= 2;
-	  new_cond->argument_list()->push_back(item, thd->mem_root);
+	  fix->marker= 2;
+	  new_cond->argument_list()->push_back(fix, thd->mem_root);
 	}
       }
       switch (new_cond->argument_list()->elements) 
@@ -1189,10 +1191,11 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond, List<Grouping_tmp_f
       Item *item;
       while ((item=li++))
       {
-	if (!item->check_condition_fields(fields))
+        Item *fix= extract_cond_for_grouping_fields(thd, item, fields);
+	if (!(fix) || !(fix->check_condition_fields(fields)))
 	  return 0;
-	item->marker= 1;
-	new_cond->argument_list()->push_back(item, thd->mem_root);
+	fix->marker= 1;
+	new_cond->argument_list()->push_back(fix, thd->mem_root);
       }
       return new_cond;
     }
@@ -1216,7 +1219,7 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   if (!extract_cond)
     return false;
   substitute_for_needed_clones(thd, extract_cond);
-  *(cond)= delete_not_needed_parts(thd, *cond);
+  thd->change_item_tree(cond, delete_not_needed_parts(thd, *cond));
   st_select_lex_unit *unit= derived->get_unit();
   st_select_lex *sl= unit->first_select();
   for (; sl; sl= sl->next_select())
@@ -1224,11 +1227,12 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
     List<Grouping_tmp_field> grouping_tmp_field;
     collect_grouping_fields(thd, derived, sl, &grouping_tmp_field);
     Item *extract_fields= 
-    extract_cond_for_grouping_fields(thd, extract_cond, &grouping_tmp_field);
+      extract_cond_for_grouping_fields(thd, extract_cond, &grouping_tmp_field);
     if (!extract_fields)
       break;
     substitute_for_needed_clones(thd, extract_fields);
-    extract_cond= delete_not_needed_parts(thd, extract_cond);
+    thd->change_item_tree(&extract_cond, 
+			  delete_not_needed_parts(thd, extract_cond));
     Item *extract_cond_cl_field= extract_fields;
     if (sl->next_select())
       extract_cond_cl_field= extract_cond->build_clone(thd->mem_root);
@@ -1236,7 +1240,9 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 							   &grouping_tmp_field))
       return true;
     extract_cond_cl_field->walk(&Item::cleanup_processor, 0, 0);
-    sl->join->conds= and_conds(thd, sl->join->conds, extract_cond_cl_field);
+    thd->change_item_tree(&sl->join->conds, 
+			  and_conds(thd, sl->join->conds, 
+				    extract_cond_cl_field));
     st_select_lex *save_curr_select= thd->lex->current_select;
     thd->lex->current_select= sl;
     if (sl->join->conds->fix_fields(thd, &sl->join->conds))
@@ -1250,11 +1256,13 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   {
     Item *extract_cond_cl= extract_cond;
     if (sl->next_select())
-      extract_cond_cl= extract_cond->build_clone(thd->mem_root);
+      thd->change_item_tree(&extract_cond_cl,
+			    extract_cond->build_clone(thd->mem_root));
     if (extract_cond_cl->field_transformer(thd, derived->table->map, sl))
       return true;
     extract_cond_cl->walk(&Item::cleanup_processor, 0, 0);
-    sl->join->having= and_conds(thd, sl->join->having, extract_cond_cl);
+    thd->change_item_tree(&sl->join->having,
+			  and_conds(thd, sl->join->having, extract_cond_cl));
     st_select_lex *save_curr_select= thd->lex->current_select;
     thd->lex->current_select= sl;
     sl->having_fix_field= 1;

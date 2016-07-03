@@ -479,6 +479,7 @@ Item::Item(THD *thd):
   }
 }
 
+
 /**
   Constructor used by Item_field, Item_ref & aggregate (sum)
   functions.
@@ -9844,3 +9845,9 @@ Item *Item::get_copy(MEM_ROOT *mem_root)
   return 0;
 }
 
+
+void Item::register_in(THD *thd)
+{
+  next= thd->free_list;
+  thd->free_list= this;
+}

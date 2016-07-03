@@ -1496,6 +1496,9 @@ public:
   virtual bool find_selective_predicates_list_processor(uchar *opt_arg)
   { return 0; }
   virtual Item *get_copy(MEM_ROOT *mem_root);
+  virtual Item *get_copy(THD *thd, MEM_ROOT *mem_root);
+  
+
   //virtual Item *get_copy(MEM_ROOT *mem_root)=0;
 
   /* To call bool function for all arguments */
@@ -1865,11 +1868,11 @@ public:
 
 
 template <class T>
-inline T* get_copy (THD *thd, MEM_ROOT *mem_root, T* item)
+inline Item* get_item_copy (THD *thd, MEM_ROOT *mem_root, T* item)
 {
-  Item *copy= new (mem_root) T(item);
+  Item *copy= new (mem_root) T(*item);
   copy->register_in(thd);
-  return (T) copy;
+  return copy;
 }	
 
 
@@ -2276,6 +2279,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_name_const(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_name_const>(thd, mem_root, this); }
 };
 
 class Item_num: public Item_basic_constant
@@ -2560,6 +2565,8 @@ public:
   virtual void print(String *str, enum_query_type query_type);
   Item_field *get_copy(MEM_ROOT *mem_root) 
   { return new (mem_root) Item_field(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_field>(thd, mem_root, this); }
   bool is_outer_field() const
   {
     DBUG_ASSERT(fixed);
@@ -2655,6 +2662,8 @@ public:
   bool check_vcol_func_processor(uchar *arg) { return FALSE;}
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_null(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_null>(thd, mem_root, this); }
 };
 
 class Item_null_result :public Item_null
@@ -2868,6 +2877,8 @@ public:
   bool check_vcol_func_processor(uchar *arg) { return FALSE;}
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_int(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_int>(thd, mem_root, this); }
 };
 
 
@@ -2886,6 +2897,8 @@ public:
   uint decimal_precision() const { return max_length; }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_uint(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_uint>(thd, mem_root, this); }
 };
 
 
@@ -2941,6 +2954,8 @@ public:
   bool check_vcol_func_processor(uchar *arg) { return FALSE;}
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_decimal(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_decimal>(thd, mem_root, this); }
 };
 
 
@@ -2991,6 +3006,8 @@ public:
   { return real_eq(value, item); }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_float(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_float>(thd, mem_root, this); }
 };
 
 
@@ -3184,6 +3201,8 @@ public:
   
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_string(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_string>(thd, mem_root, this); }
 
 };
 
@@ -3537,6 +3556,8 @@ public:
   bool get_date(MYSQL_TIME *res, ulonglong fuzzy_date);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_date_literal(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_date_literal>(thd, mem_root, this); }
 };
 
 
@@ -3558,6 +3579,8 @@ public:
   bool get_date(MYSQL_TIME *res, ulonglong fuzzy_date);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_time_literal(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_time_literal>(thd, mem_root, this); }
 };
 
 
@@ -3581,6 +3604,8 @@ public:
   bool get_date(MYSQL_TIME *res, ulonglong fuzzy_date);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_datetime_literal(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_datetime_literal>(thd, mem_root, this); }
 };
 
 
@@ -4131,6 +4156,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_ref(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_ref>(thd, mem_root, this); }
 };
 
 
@@ -4175,6 +4202,8 @@ public:
   virtual Ref_Type ref_type() { return DIRECT_REF; }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_direct_ref(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_direct_ref>(thd, mem_root, this); }
 };
 
 
@@ -4338,6 +4367,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_cache_wrapper(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_cache_wrapper>(thd, mem_root, this); }
 };
 
 
@@ -4591,6 +4622,8 @@ public:
   table_map used_tables() const;
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_ref_null_helper(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_ref_null_helper>(thd, mem_root, this); }
 };
 
 /*
@@ -4752,6 +4785,8 @@ public:
   int save_in_field(Field *field, bool no_conversions);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_copy_string(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_copy_string>(thd, mem_root, this); }
 };
 
 
@@ -4776,6 +4811,8 @@ public:
   virtual void copy();
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_copy_int(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_copy_int>(thd, mem_root, this); }
 };
 
 
@@ -4794,6 +4831,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_copy_uint(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_copy_uint>(thd, mem_root, this); }
 };
 
 
@@ -4822,6 +4861,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_copy_float(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_copy_float>(thd, mem_root, this); }
 };
 
 
@@ -4843,6 +4884,8 @@ public:
   void copy();
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_copy_decimal(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_copy_decimal>(thd, mem_root, this); }
 };
 
 
@@ -5265,6 +5308,8 @@ public:
   int save_in_field(Field *field, bool no_conversions);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_cache_int(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_cache_int>(thd, mem_root, this); }
 };
 
 
@@ -5291,6 +5336,8 @@ public:
   Item *clone_item(THD *thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_cache_temporal(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_cache_temporal>(thd, mem_root, this); }
 };
 
 
@@ -5309,6 +5356,8 @@ public:
   bool cache_value();
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_cache_real(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_cache_real>(thd, mem_root, this); }
 };
 
 
@@ -5327,6 +5376,8 @@ public:
   bool cache_value();
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_cache_decimal(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_cache_decimal>(thd, mem_root, this); }
 };
 
 
@@ -5355,6 +5406,8 @@ public:
   bool cache_value();
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_cache_str(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_cache_str>(thd, mem_root, this); }
 };
 
 
@@ -5380,6 +5433,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_cache_str_for_nullif(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_cache_str_for_nullif>(thd, mem_root, this); }
 };
 
 
@@ -5453,6 +5508,8 @@ public:
   virtual void set_null();
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_cache_row(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_cache_row>(thd, mem_root, this); }
 };
 
 

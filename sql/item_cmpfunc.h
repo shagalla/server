@@ -348,6 +348,8 @@ public:
   void reset_cache() { cache= NULL; }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_in_optimizer(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_in_optimizer>(thd, mem_root, this); }
 };
 
 
@@ -525,6 +527,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_xor(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_xor>(thd, mem_root, this); }
 };
 
 class Item_func_not :public Item_bool_func
@@ -543,6 +547,8 @@ public:
   virtual void print(String *str, enum_query_type query_type);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_not(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_not>(thd, mem_root, this); }
 };
 
 class Item_maxmin_subselect;
@@ -592,7 +598,8 @@ public:
                       SARGABLE_PARAM **sargables);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_trig_cond(*this); }
-  
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_trig_cond>(thd, mem_root, this); }
 };
 
 class Item_func_not_all :public Item_func_not
@@ -670,6 +677,8 @@ public:
   friend class  Arg_comparator;
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_eq(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_eq>(thd, mem_root, this); }
 };
 
 class Item_func_equal :public Item_bool_rowready_func2
@@ -694,6 +703,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_equal(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_equal>(thd, mem_root, this); }
 };
 
 
@@ -710,6 +721,8 @@ public:
   Item *negated_item(THD *thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_ge(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_ge>(thd, mem_root, this); }
 };
 
 
@@ -726,6 +739,8 @@ public:
   Item *negated_item(THD *thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_gt(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_gt>(thd, mem_root, this); }
 };
 
 
@@ -742,6 +757,8 @@ public:
   Item *negated_item(THD *thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_le(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_le>(thd, mem_root, this); }
 };
 
 
@@ -758,6 +775,8 @@ public:
   Item *negated_item(THD *thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_lt(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_lt>(thd, mem_root, this); }
 };
 
 
@@ -783,6 +802,8 @@ public:
                       table_map usable_tables, SARGABLE_PARAM **sargables);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_ne(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_ne>(thd, mem_root, this); }
 };
 
 
@@ -865,6 +886,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_between(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_between>(thd, mem_root, this); }
 };
 
 
@@ -885,6 +908,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_strcmp(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_strcmp>(thd, mem_root, this); }
 };
 
 
@@ -988,6 +1013,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_ifnull(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_ifnull>(thd, mem_root, this); }
 };
 
 
@@ -1079,6 +1106,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_nullif(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_nullif>(thd, mem_root, this); }
 };
 
 
@@ -1262,7 +1291,6 @@ public:
     item_dec->set_decimal_value(dec);
   }
   Item_result result_type() { return DECIMAL_RESULT; }
-
 };
 
 
@@ -1618,6 +1646,8 @@ public:
   bool count_sargable_conds(uchar *arg);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_in(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_in>(thd, mem_root, this); }
 };
 
 class cmp_item_row :public cmp_item
@@ -1714,6 +1744,8 @@ public:
   Item *neg_transformer(THD *thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_isnull(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_isnull>(thd, mem_root, this); }
 };
 
 /* Functions used by HAVING for rewriting IN subquery */
@@ -1761,6 +1793,8 @@ public:
   void top_level_item() { abort_on_null=1; }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_isnotnull(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_isnotnull>(thd, mem_root, this); }
 };
 
 
@@ -1903,6 +1937,8 @@ public:
   
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_like(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_like>(thd, mem_root, this); }
 };
 
 
@@ -2010,6 +2046,8 @@ public:
   const char *func_name() const { return "regexp"; }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_regex(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_regex>(thd, mem_root, this); }
 
   virtual inline void print(String *str, enum_query_type query_type)
   {
@@ -2039,6 +2077,8 @@ public:
   const char *func_name() const { return "regexp_instr"; }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_regexp_instr(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_regexp_instr>(thd, mem_root, this); }
 };
 
 
@@ -2440,6 +2480,8 @@ public:
   SEL_TREE *get_mm_tree(RANGE_OPT_PARAM *param, Item **cond_ptr);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_cond_and(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_cond_and>(thd, mem_root, this); }
 };
 
 inline bool is_cond_and(Item *item)
@@ -2466,6 +2508,8 @@ public:
   Item *neg_transformer(THD *thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_cond_or(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_cond_or>(thd, mem_root, this); }
 };
 
 class Item_func_dyncol_check :public Item_bool_func
@@ -2476,6 +2520,8 @@ public:
   const char *func_name() const { return "column_check"; }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_dyncol_check(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_dyncol_check>(thd, mem_root, this); }
 };
 
 class Item_func_dyncol_exists :public Item_bool_func
@@ -2485,8 +2531,6 @@ public:
     Item_bool_func(thd, str, num) {}
   longlong val_int();
   const char *func_name() const { return "column_exists"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_dyncol_exists(*this); }
 };
 
 inline bool is_cond_or(Item *item)

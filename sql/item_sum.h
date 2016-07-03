@@ -774,6 +774,8 @@ public:
   void remove();
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_sum(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_sum>(thd, mem_root, this); }
 
 private:
   void add_helper(bool perform_removal);
@@ -833,6 +835,8 @@ class Item_sum_count :public Item_sum_int
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_count(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_count>(thd, mem_root, this); }
 };
 
 
@@ -882,6 +886,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_avg(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_avg>(thd, mem_root, this); }
 };
 
 
@@ -942,6 +948,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_variance(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_variance>(thd, mem_root, this); }
 };
 
 /*
@@ -963,6 +971,8 @@ class Item_sum_std :public Item_sum_variance
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_std(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_std>(thd, mem_root, this); }
 };
 
 // This class is a string or number function depending on num_func
@@ -1030,6 +1040,8 @@ public:
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_min(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_min>(thd, mem_root, this); }
 };
 
 
@@ -1045,6 +1057,8 @@ public:
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_max(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_max>(thd, mem_root, this); }
 };
 
 
@@ -1121,6 +1135,8 @@ public:
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_or(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_or>(thd, mem_root, this); }
 
 private:
   void set_bits_from_counters();
@@ -1138,6 +1154,8 @@ public:
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_and(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_and>(thd, mem_root, this); }
 
 private:
   void set_bits_from_counters();
@@ -1153,6 +1171,8 @@ public:
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_xor(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_xor>(thd, mem_root, this); }
 
 private:
   void set_bits_from_counters();
@@ -1213,6 +1233,8 @@ public:
   double val_real();
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_avg_field_double(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_avg_field_double>(thd, mem_root, this); }
 };
 
 
@@ -1234,6 +1256,8 @@ public:
   my_decimal *val_decimal(my_decimal *);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_avg_field_decimal(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_avg_field_decimal>(thd, mem_root, this); }
 };
 
 
@@ -1260,6 +1284,8 @@ public:
   }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_variance_field(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_variance_field>(thd, mem_root, this); }
 };
 
 
@@ -1273,6 +1299,8 @@ public:
   double val_real();
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_std_field(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_std_field>(thd, mem_root, this); }
 };
 
 
@@ -1362,6 +1390,8 @@ class Item_sum_udf_float :public Item_udf_sum
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_udf_float(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_udf_float>(thd, mem_root, this); }
 };
 
 
@@ -1385,6 +1415,8 @@ public:
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_udf_int(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_udf_int>(thd, mem_root, this); }
 };
 
 
@@ -1427,6 +1459,8 @@ public:
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_udf_str(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_udf_str>(thd, mem_root, this); }
 };
 
 
@@ -1449,6 +1483,8 @@ public:
   Item *copy_or_same(THD* thd);
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_sum_udf_decimal(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_sum_udf_decimal>(thd, mem_root, this); }
 };
 
 #else /* Dummy functions to get sql_yacc.cc compiled */
@@ -1644,6 +1680,8 @@ public:
     { context= (Name_resolution_context *)cntx; return FALSE; }
   Item *get_copy(MEM_ROOT *mem_root)
   { return new (mem_root) Item_func_group_concat(*this); }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_group_concat>(thd, mem_root, this); }
 };
 
 #endif /* ITEM_SUM_INCLUDED */

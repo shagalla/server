@@ -9846,6 +9846,14 @@ Item *Item::get_copy(MEM_ROOT *mem_root)
 }
 
 
+Item *Item::get_copy(THD *thd, MEM_ROOT *mem_root)
+{
+  dbug_print_item(this); 
+  DBUG_ASSERT(0);  
+  return 0;
+}
+
+
 void Item::register_in(THD *thd)
 {
   next= thd->free_list;

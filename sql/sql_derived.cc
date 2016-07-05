@@ -994,7 +994,10 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
 
 Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map) 
 {
-  if (cond->depends_only_on(view_map))
+  bool is_multiple_equality= cond->type() == Item::FUNC_ITEM && 
+  ((Item_func*) cond)->functype() == Item_func::MULT_EQUAL_FUNC;
+  if (cond->depends_only_on(view_map) && !is_multiple_equality 
+      && !cond->type() == Item::COND_ITEM)
   {
     cond->marker= 2;
     return cond;	
@@ -1029,7 +1032,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
     }
     else
     {					
-      Item_cond_or *new_cond=new (thd->mem_root) Item_cond_or(thd);
+      Item_cond_or *new_cond= new (thd->mem_root) Item_cond_or(thd);
       if (!new_cond)
 	return 0;			
       List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
@@ -1041,6 +1044,50 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
 	  return 0;
 	fix->marker= 1;
 	new_cond->argument_list()->push_back(fix, thd->mem_root);
+      }
+      return new_cond;
+    }
+  }
+  else if (is_multiple_equality)
+  {
+  if (cond->used_tables() & view_map)
+    {
+      Item *new_cond= NULL;
+      int i= 0;
+      Item_equal *item_equal= (Item_equal *) cond;
+      Item *const_item = item_equal->get_const();
+      Item_equal_fields_iterator it(*item_equal);
+      Item *item;
+      item=it++;
+      if (!const_item)
+	const_item= item;
+      else
+	it.rewind();
+      if (cond->used_tables() & view_map)
+      {
+	while ((item=it++))
+	{
+	  if (item->used_tables() & view_map)
+	  {
+	    Item_func_eq *eq= 
+	      new (thd->mem_root) Item_func_eq(thd, item, const_item);
+	    if (eq)
+	    {
+	      i++;
+	      switch (i)
+	      {
+		case 1:
+		  new_cond= eq;
+		  break;
+		case 2:
+		  new_cond= new (thd->mem_root) Item_cond_and(thd, new_cond, eq);
+		  break;
+		default:
+		  ((Item_cond_and*)new_cond)->argument_list()->push_back(eq, thd->mem_root);
+	      }
+	    }
+	  }
+	}
       }
       return new_cond;
     }

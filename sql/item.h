@@ -107,6 +107,9 @@ char_to_byte_length_safe(uint32 char_length_arg, uint32 mbmaxlen_arg)
 #define MY_COLL_ALLOW_CONV (MY_COLL_ALLOW_SUPERSET_CONV | MY_COLL_ALLOW_COERCIBLE_CONV)
 #define MY_COLL_CMP_CONV   (MY_COLL_ALLOW_CONV | MY_COLL_DISALLOW_NONE)
 
+#define DEPENDENCE_ON_VIEW_ONLY_FL (1 << 6)
+#define NO_EXTRACTION_FOR_VIEW_FL (1 << 7)
+
 class DTCollation {
 public:
   CHARSET_INFO     *collation;
@@ -1117,15 +1120,16 @@ public:
   /* cloning of constant items (0 if it is not const) */
   virtual Item *clone_item(THD *thd) { return 0; }
   virtual Item* build_clone(MEM_ROOT *mem_root) { return get_copy(mem_root); }
-  virtual bool depends_only_on(table_map view_map) 
-  { return ((used_tables() & (~view_map)) == 0); }
+  virtual bool dep_only_on(table_map map) { return used_tables() == 0; } 
   virtual bool field_transformer(THD *thd, table_map map, st_select_lex *sl) 
   { return false; }
-  virtual bool check_condition_fields(List<Grouping_tmp_field> *fields) 
+  virtual bool check_condition_fields(List<Grouping_tmp_field> *fields, 
+				      table_map map) 
   { return true; }
   virtual bool 
     field_transformer_for_where(THD *thd, 
-                                List<Grouping_tmp_field> *fields_list)
+                                List<Grouping_tmp_field> *fields_list,
+				table_map map)
   { return true; }
   virtual cond_result eq_cmp_result() const { return COND_OK; }
   inline uint float_length(uint decimals_par) const
@@ -1864,6 +1868,17 @@ public:
 	
 
   void register_in(THD *thd);	 
+  
+  bool depends_only_on(table_map view_map) 
+  { return marker & DEPENDENCE_ON_VIEW_ONLY_FL; }
+  int get_dep_flags() 
+  { return  marker & 
+           (DEPENDENCE_ON_VIEW_ONLY_FL | NO_EXTRACTION_FOR_VIEW_FL); }
+  void set_dep_flags(int flags) 
+  { 
+    marker &= ~ (DEPENDENCE_ON_VIEW_ONLY_FL | NO_EXTRACTION_FOR_VIEW_FL);
+    marker|= flags; 
+  }   
 };
 
 
@@ -2567,6 +2582,7 @@ public:
   { return new (mem_root) Item_field(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_field>(thd, mem_root, this); }
+  bool dep_only_on(table_map map);
   bool is_outer_field() const
   {
     DBUG_ASSERT(fixed);
@@ -3967,10 +3983,13 @@ public:
   bool const_item() const { return const_item_cache; }
   table_map used_tables() const { return used_tables_cache; }
   Item* build_clone(MEM_ROOT *mem_root);
+  bool dep_only_on(table_map map);
   bool field_transformer(THD *thd, table_map map, st_select_lex *sl);
-  bool check_condition_fields(List<Grouping_tmp_field> *fields);
+  bool check_condition_fields(List<Grouping_tmp_field> *fields, 
+				   table_map map);
   bool field_transformer_for_where(THD *thd,
-                                   List<Grouping_tmp_field> *fields_list);
+                                   List<Grouping_tmp_field> *fields_list,
+				   table_map map);      
 };
 
 

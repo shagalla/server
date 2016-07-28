@@ -34,6 +34,9 @@
 #include "sql_time.h"                  // make_truncated_value_warning
 #include "sql_base.h"                  // dynamic_column_error_message
 
+#define DEPENDENCE_ON_VIEW_ONLY_FL (1 << 6)
+#define NO_EXTRACTION_FOR_VIEW_FL (1 << 7)
+
 
 /**
   find an temporal type (item) that others will be converted to
@@ -4877,13 +4880,14 @@ bool Item_cond::field_transformer(THD *thd, table_map map, st_select_lex *sl)
 }
 
 
-bool Item_cond::check_condition_fields(List<Grouping_tmp_field> *fields)
+bool Item_cond::check_condition_fields(List<Grouping_tmp_field> *fields,
+				       table_map map)
 {
   List_iterator_fast<Item> li(list);
   Item *item;
   while ((item= li++))
   {
-    if (!item->check_condition_fields(fields))
+    if (!item->check_condition_fields(fields, map))
       return false;
   }
   return true;
@@ -4892,16 +4896,67 @@ bool Item_cond::check_condition_fields(List<Grouping_tmp_field> *fields)
 
 bool Item_cond::
   field_transformer_for_where(THD *thd,
-			      List<Grouping_tmp_field> *fields_list)
+			      List<Grouping_tmp_field> *fields_list,
+			      table_map map)
 {
   List_iterator_fast<Item> li(list);
   Item *item;
   while ((item= li++))
   {
-    if (item->field_transformer_for_where(thd, fields_list))
+    if (item->field_transformer_for_where(thd, fields_list, map))
       return true;
   }
   return false;
+}
+
+
+bool Item_cond::dep_only_on(table_map map)
+{
+  List_iterator_fast<Item> li(list);
+  Item *item;
+  set_dep_flags(0);
+  while ((item= li++))
+  {
+    item->set_dep_flags(0);
+    if (item->dep_only_on(map) && item->type() == Item::FUNC_ITEM)
+      item->set_dep_flags(DEPENDENCE_ON_VIEW_ONLY_FL);
+  }
+  li.rewind();
+  item= li++;
+  int flags= item->get_dep_flags();
+  if (functype() == Item_func::COND_AND_FUNC)
+  {
+    if (!flags)
+      return false;
+    set_dep_flags(flags);
+    while ((item=li++))
+    {
+      if (item->get_dep_flags() != flags)
+      {
+	set_dep_flags(0);
+	return false;
+      }
+    }
+  } 
+  if (functype() == Item_func::COND_OR_FUNC)
+  {
+    set_dep_flags(flags);
+    if (flags == NO_EXTRACTION_FOR_VIEW_FL)
+      return false;
+    while ((item=li++))
+    {
+      if (item->get_dep_flags() != flags)
+      {
+	if (item->get_dep_flags() == NO_EXTRACTION_FOR_VIEW_FL)
+	{
+	  set_dep_flags(NO_EXTRACTION_FOR_VIEW_FL);
+	  return false;
+	}
+	set_dep_flags(0);
+      }
+    }
+  }
+  return (get_dep_flags() &  DEPENDENCE_ON_VIEW_ONLY_FL);
 }
 
 

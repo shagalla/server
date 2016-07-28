@@ -2158,9 +2158,12 @@ public:
   bool eval_not_null_tables(uchar *opt_arg);
   Item *build_clone(MEM_ROOT *mem_root);
   bool field_transformer(THD *thd, table_map map, st_select_lex *sl);
-  bool check_condition_fields(List<Grouping_tmp_field> *fields);
+  bool check_condition_fields(List<Grouping_tmp_field> *fields, 
+			      table_map map);
   bool field_transformer_for_where(THD *thd,
-                                   List<Grouping_tmp_field> *fields_list);
+                                   List<Grouping_tmp_field> *fields_list,
+				   table_map map);
+  bool dep_only_on(table_map map);
 };
 
 template <template<class> class LI, class T> class Item_equal_iterator;

@@ -2191,6 +2191,19 @@ Item* Item_func_or_sum::build_clone(MEM_ROOT *mem_root)
 }
 
 
+bool Item_func_or_sum::dep_only_on(table_map map)
+{
+  if (((Item_func*) this)->functype() == Item_func::MULT_EQUAL_FUNC)
+    return (used_tables() == map);
+  for (uint i= 0; i < arg_count; i++)
+  {
+    if (!args[i]->dep_only_on(map))
+      return false;
+  }
+  return true;
+}
+
+
 /**
   Making from field with view name (ex: v1.a) 
   field without it (ex: a).
@@ -2204,20 +2217,43 @@ bool Item_func_or_sum::field_transformer(THD *thd, table_map map,
   {
     if (args[i]->type() == FIELD_ITEM)
     {
-      if (args[i]->used_tables() == map)
+      if (!((Item_field*)args[i])->item_equal)
       {
-	Item_ref *rf= 
-	  new (thd->mem_root) Item_ref(thd, &sl->context, 
-				       NullS, NullS,
-				       ((Item_field*) args[i])->field_name);
-	if (!rf)
-	  return true;
-	args[i]= rf;
+        if (args[i]->used_tables() == map)
+        {
+	  Item_ref *rf= 
+	    new (thd->mem_root) Item_ref(thd, &sl->context, 
+	  	   	               NullS, NullS,
+				     ((Item_field*) args[i])->field_name);
+	  if (!rf)
+	    return true;
+	  args[i]= rf;
+        }
+      }
+      else
+      {
+        Item_equal *cond= (Item_equal *) ((Item_field*)args[i])->item_equal;
+	Item_equal_fields_iterator li(*cond);
+        Item *item;
+        while ((item=li++))
+        {
+          if (item->used_tables() == map)
+	  {
+	    Item_ref *rf= 
+	      new (thd->mem_root) Item_ref(thd, &sl->context, 
+					   NullS, NullS,
+				         ((Item_field*) item)->field_name);
+	    if (!rf)
+	      return true;
+	    args[i]= rf;
+	      break;
+	  }
+        }
       }
     }
     else
       args[i]->field_transformer(thd, map, sl);
-  }
+    }
   return false;
 }
 
@@ -2227,7 +2263,8 @@ bool Item_func_or_sum::field_transformer(THD *thd, table_map map,
   field_list.
 */ 
 
-bool Item_func_or_sum::check_condition_fields(List<Grouping_tmp_field> *fields)
+bool Item_func_or_sum::check_condition_fields(List<Grouping_tmp_field> *fields,
+					      table_map map)
 {
   for (uint i= 0; i < arg_count; i++)
   {
@@ -2235,16 +2272,37 @@ bool Item_func_or_sum::check_condition_fields(List<Grouping_tmp_field> *fields)
     {
       List_iterator<Grouping_tmp_field> li(*fields);
       Grouping_tmp_field *field;
-      while ((field=li++))
+      if (args[i]->used_tables() == map)
       {
-        if (((Item_field*) args[i])->field == field->tmp_field)
-          break;
+        while ((field=li++))
+        {
+	  if (((Item_field*) args[i])->field == field->tmp_field)
+	    break;
+        }
       }
-      if (!field)
-        return false;
+      else if (((Item_field*)args[i])->item_equal)
+      {
+	Item_equal *cond= (Item_equal *) ((Item_field*)args[i])->item_equal;
+	Item_equal_fields_iterator it(*cond);
+	Item *item;
+	while ((item=it++))
+	{
+	  if (item->used_tables() == map)
+	  {
+	    li.rewind();
+            while ((field=li++))
+            {
+	      if ((Field*)item == field->tmp_field)
+	        goto found;
+            }
+	  }
+	}
+	return false;
+found: ;	
+      }
     }
     else
-      args[i]->check_condition_fields(fields);
+      args[i]->check_condition_fields(fields, map);
   }
   return true;
 }
@@ -2252,7 +2310,8 @@ bool Item_func_or_sum::check_condition_fields(List<Grouping_tmp_field> *fields)
 
 bool Item_func_or_sum::
   field_transformer_for_where(THD *thd,
-                              List<Grouping_tmp_field> *fields_list)
+                              List<Grouping_tmp_field> *fields_list,
+			      table_map map)
 {
   for (uint i= 0; i < arg_count; i++)
   {
@@ -2260,14 +2319,39 @@ bool Item_func_or_sum::
     {
       List_iterator<Grouping_tmp_field> li(*fields_list);
       Grouping_tmp_field *field;
-      while ((field=li++))
+      if (args[i]->used_tables() == map)
       {
-	if (((Item_field*) args[i])->field == field->tmp_field)
-	  args[i]= field->producing_item->build_clone(thd->mem_root);
+        while ((field=li++))
+        {
+	  if (((Item_field*) args[i])->field == field->tmp_field)
+	    args[i]= field->producing_item->build_clone(thd->mem_root);
+        }
+      }
+      else if (((Item_field*)args[i])->item_equal)
+      {
+	Item_equal *cond= (Item_equal *) ((Item_field*)args[i])->item_equal;
+	Item_equal_fields_iterator it(*cond);
+	Item *item;
+	while ((item=it++))
+	{
+	  if (item->used_tables() == map)
+	  {   
+	    li.rewind();
+            while ((field=li++))
+            {
+	      if ((Field*)item == field->tmp_field)
+	      {
+	        args[i]= field->producing_item->build_clone(thd->mem_root);
+	        goto found;
+	      }
+            }  
+          }
+	}
+found: ;
       }
     }
     else
-      args[i]->field_transformer_for_where(thd, fields_list);
+      args[i]->field_transformer_for_where(thd, fields_list, map);
   }
   return false;
 }
@@ -6674,6 +6758,15 @@ void Item_field::print(String *str, enum_query_type query_type)
     return;
   }
   Item_ident::print(str, query_type);
+}
+
+
+bool Item_field::dep_only_on(table_map map)
+{
+  if (used_tables() == map || 
+      (item_equal && item_equal->used_tables() & map)) 
+    return true;
+  return false;
 }
 
 

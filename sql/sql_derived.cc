@@ -997,7 +997,10 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
   if (cond->get_dep_flags() == NO_EXTRACTION_FOR_VIEW_FL)
     return 0;
   if (cond->get_dep_flags() == DEPENDENCE_ON_VIEW_ONLY_FL)
+  {
+    cond->marker= 2;
     return cond;
+  }
   bool is_multiple_equality= cond->type() == Item::FUNC_ITEM && 
   ((Item_func*) cond)->functype() == Item_func::MULT_EQUAL_FUNC;
   if (cond->depends_only_on(view_map) && (is_multiple_equality == FALSE))

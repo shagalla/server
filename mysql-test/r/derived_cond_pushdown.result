@@ -644,3 +644,201 @@ EXPLAIN
   }
 }
 deallocate prepare stmt;
+select * from v1,t2 where (t2.a<5) and (v1.a=t2.a);
+a	b	max_c	avg_c	a	b	c	d
+1	21	500	234.6000	1	21	909	12
+1	19	107	107.0000	1	21	909	12
+1	21	500	234.6000	1	19	203	107
+1	19	107	107.0000	1	19	203	107
+explain format=json select * from v1,t2 where (t2.a<5) and (v1.a=t2.a);
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100,
+      "attached_condition": "(t2.a is not null)"
+    },
+    "table": {
+      "table_name": "<derived2>",
+      "access_type": "ref",
+      "possible_keys": ["key0"],
+      "key": "key0",
+      "key_length": "5",
+      "used_key_parts": ["a"],
+      "ref": ["test.t2.a"],
+      "rows": 2,
+      "filtered": 100,
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "(max_c < 707)",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100,
+                "attached_condition": "(t1.a < 5)"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+select * from v1,t2 where (t2.c>150) and (v1.max_c=t2.c);
+a	b	max_c	avg_c	a	b	c	d
+5	16	207	207.0000	2	3	207	207
+6	20	315	279.3333	6	20	315	279
+explain format=json select * from v1,t2 where (t2.c>150) and (v1.max_c=t2.c);
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100,
+      "attached_condition": "(t2.c is not null)"
+    },
+    "table": {
+      "table_name": "<derived2>",
+      "access_type": "ref",
+      "possible_keys": ["key0"],
+      "key": "key0",
+      "key_length": "5",
+      "used_key_parts": ["max_c"],
+      "ref": ["test.t2.c"],
+      "rows": 2,
+      "filtered": 100,
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and (max_c > 150))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+select * from v1,t2
+where ((t2.a>5) and (v1.a=t2.a)) and ((t2.c>250) and (v1.max_c=t2.c));
+a	b	max_c	avg_c	a	b	c	d
+6	20	315	279.3333	6	20	315	279
+explain format=json
+select * from v1,t2
+where ((t2.a>5) and (v1.a=t2.a)) and ((t2.c>250) and (v1.max_c=t2.c));
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100,
+      "attached_condition": "((t2.a is not null) and (t2.c is not null))"
+    },
+    "table": {
+      "table_name": "<derived2>",
+      "access_type": "ref",
+      "possible_keys": ["key0"],
+      "key": "key0",
+      "key_length": "10",
+      "used_key_parts": ["a", "max_c"],
+      "ref": ["test.t2.a", "test.t2.c"],
+      "rows": 2,
+      "filtered": 100,
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and (max_c > 250))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100,
+                "attached_condition": "(t1.a > 5)"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+select * from v1,t2
+where ((t2.a<4) and (v1.a=t2.a)) or ((t2.c>150) and (v1.max_c=t2.c));
+a	b	max_c	avg_c	a	b	c	d
+1	19	107	107.0000	1	21	909	12
+1	19	107	107.0000	1	19	203	107
+1	21	500	234.6000	1	21	909	12
+1	21	500	234.6000	1	19	203	107
+5	16	207	207.0000	2	3	207	207
+6	20	315	279.3333	6	20	315	279
+explain format=json
+select * from v1,t2
+where ((t2.a<4) and (v1.a=t2.a)) or ((t2.c>150) and (v1.max_c=t2.c));
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100,
+      "attached_condition": "((t2.a < 4) or (t2.c > 150))"
+    },
+    "block-nl-join": {
+      "table": {
+        "table_name": "<derived2>",
+        "access_type": "ALL",
+        "rows": 20,
+        "filtered": 100
+      },
+      "buffer_type": "flat",
+      "buffer_size": "256Kb",
+      "join_type": "BNL",
+      "attached_condition": "(((v1.a = t2.a) and (t2.a < 4)) or ((v1.max_c = t2.c) and (t2.c > 150)))",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and ((t1.a < 4) or (max_c > 150)))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -994,9 +994,9 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
 
 Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map) 
 {
-  if (!cond->marker)
+  if (cond->get_dep_flags() == NO_EXTRACTION_FOR_VIEW_FL)
     return 0;
-  if (cond->marker == DEPENDENCE_ON_VIEW_ONLY_FL)
+  if (cond->get_dep_flags() == DEPENDENCE_ON_VIEW_ONLY_FL)
     return cond;
   bool is_multiple_equality= cond->type() == Item::FUNC_ITEM && 
   ((Item_func*) cond)->functype() == Item_func::MULT_EQUAL_FUNC;

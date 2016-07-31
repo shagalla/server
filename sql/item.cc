@@ -2237,7 +2237,7 @@ bool Item_func_or_sum::field_transformer(THD *thd, table_map map,
         Item *item;
         while ((item=li++))
         {
-          if (item->used_tables() == map)
+          if (item->used_tables() == map && item->type() == FIELD_ITEM)
 	  {
 	    Item_ref *rf= 
 	      new (thd->mem_root) Item_ref(thd, &sl->context, 
@@ -2279,6 +2279,8 @@ bool Item_func_or_sum::check_condition_fields(List<Grouping_tmp_field> *fields,
 	  if (((Item_field*) args[i])->field == field->tmp_field)
 	    break;
         }
+        if (!field)
+	  return false;
       }
       else if (((Item_field*)args[i])->item_equal)
       {
@@ -2287,12 +2289,12 @@ bool Item_func_or_sum::check_condition_fields(List<Grouping_tmp_field> *fields,
 	Item *item;
 	while ((item=it++))
 	{
-	  if (item->used_tables() == map)
+	  if (item->used_tables() == map && item->type() == FIELD_ITEM)
 	  {
 	    li.rewind();
             while ((field=li++))
             {
-	      if ((Field*)item == field->tmp_field)
+	      if (((Item_field *)item)->field == field->tmp_field)
 	        goto found;
             }
 	  }
@@ -2334,12 +2336,13 @@ bool Item_func_or_sum::
 	Item *item;
 	while ((item=it++))
 	{
-	  if (item->used_tables() == map)
+	  if (item->used_tables() == map && item->type() == FIELD_ITEM)
 	  {   
+	    Item_field *field_item= (Item_field *) item;
 	    li.rewind();
             while ((field=li++))
             {
-	      if ((Field*)item == field->tmp_field)
+	      if (field_item->field == field->tmp_field)
 	      {
 	        args[i]= field->producing_item->build_clone(thd->mem_root);
 	        goto found;

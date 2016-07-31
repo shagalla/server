@@ -72,5 +72,20 @@ execute stmt;
 execute stmt;
 deallocate prepare stmt;
 
+select * from v1,t2 where (t2.a<5) and (v1.a=t2.a);
+explain format=json select * from v1,t2 where (t2.a<5) and (v1.a=t2.a);
+
+select * from v1,t2 where (t2.c>150) and (v1.max_c=t2.c);
+explain format=json select * from v1,t2 where (t2.c>150) and (v1.max_c=t2.c);
+
+select * from v1,t2
+  where ((t2.a>5) and (v1.a=t2.a)) and ((t2.c>250) and (v1.max_c=t2.c));
+explain format=json
+  select * from v1,t2
+    where ((t2.a>5) and (v1.a=t2.a)) and ((t2.c>250) and (v1.max_c=t2.c));
    
-  
+select * from v1,t2
+  where ((t2.a<4) and (v1.a=t2.a)) or ((t2.c>150) and (v1.max_c=t2.c));
+explain format=json
+  select * from v1,t2
+    where ((t2.a<4) and (v1.a=t2.a)) or ((t2.c>150) and (v1.max_c=t2.c));  

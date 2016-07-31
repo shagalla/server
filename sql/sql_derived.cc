@@ -998,14 +998,14 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
     return 0;
   if (cond->get_dep_flags() == DEPENDENCE_ON_VIEW_ONLY_FL)
   {
-    cond->marker= 2;
+    //cond->marker= 2;
     return cond;
   }
   bool is_multiple_equality= cond->type() == Item::FUNC_ITEM && 
   ((Item_func*) cond)->functype() == Item_func::MULT_EQUAL_FUNC;
   if (cond->depends_only_on(view_map) && (is_multiple_equality == FALSE))
   {
-    cond->marker= 2;
+    //cond->marker= 2;
     return cond;	
   }
   if (cond->type() == Item::COND_ITEM)
@@ -1022,7 +1022,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
 	Item *fix= extract_cond_for_view(thd, item, view_map);
 	if (fix)
 	{
-	  fix->marker= 2;
+	  //fix->marker= 2;
 	  new_cond->argument_list()->push_back(fix, thd->mem_root);
 	}
       }
@@ -1116,7 +1116,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
   Making clones for OR-conditions, which depends on view.
 */ 
 
-void substitute_for_needed_clones(THD *thd, Item *cond)
+void substitute_for_needed_clones(THD *thd, Item *cond, bool always_clone)
 {
   if (cond->type() == Item::COND_ITEM)
   {
@@ -1125,7 +1125,7 @@ void substitute_for_needed_clones(THD *thd, Item *cond)
       List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
       Item *item;
       while ((item= li++))
-	substitute_for_needed_clones(thd, item);
+	substitute_for_needed_clones(thd, item, always_clone);
     }
     else
     {							
@@ -1133,7 +1133,7 @@ void substitute_for_needed_clones(THD *thd, Item *cond)
       Item *item;
       while ((item= li++))
       {
-        if (item->marker == 1)
+        if (always_clone ||  (item->marker & 3) == 1)
 	{
 	  Item *clone_it= item->build_clone(thd->mem_root);
 	  li.replace(clone_it);
@@ -1283,8 +1283,8 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   extract_cond= extract_cond_for_view(thd, *cond, derived->table->map);
   if (!extract_cond)
     return false;
-  substitute_for_needed_clones(thd, extract_cond);
-  thd->change_item_tree(cond, delete_not_needed_parts(thd, *cond));
+  substitute_for_needed_clones(thd, extract_cond, true);
+  /*thd->change_item_tree(cond, delete_not_needed_parts(thd, *cond));*/
   st_select_lex_unit *unit= derived->get_unit();
   st_select_lex *sl= unit->first_select();
   for (; sl; sl= sl->next_select())
@@ -1296,7 +1296,7 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 				       derived->table->map);
     if (!extract_fields)
       break;
-    substitute_for_needed_clones(thd, extract_fields);
+    substitute_for_needed_clones(thd, extract_fields, false);
     thd->change_item_tree(&extract_cond, 
 			  delete_not_needed_parts(thd, extract_cond));
     Item *extract_cond_cl_field= extract_fields;

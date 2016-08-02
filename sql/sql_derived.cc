@@ -994,12 +994,10 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
 
 Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map) 
 {
-  if (cond->get_dep_flags() == NO_EXTRACTION_FOR_VIEW_FL)
-    return 0;
-  if (cond->get_dep_flags() == DEPENDENCE_ON_VIEW_ONLY_FL)
-    return cond->build_clone(thd->mem_root);
   bool is_multiple_equality= cond->type() == Item::FUNC_ITEM && 
   ((Item_func*) cond)->functype() == Item_func::MULT_EQUAL_FUNC;
+  if (cond->get_dep_flags() == NO_EXTRACTION_FOR_VIEW_FL)
+    return 0;
   if (cond->type() == Item::COND_ITEM)
   {
     bool cond_and= false;
@@ -1018,16 +1016,13 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
     while ((item=li++))
     {
       Item *fix;
-      switch (item->depends_only_on(view_map)) 
+      if (item->get_dep_flags() == NO_EXTRACTION_FOR_VIEW_FL)
       {
-      case DEPENDENCE_ON_VIEW_ONLY_FL:
-	fix= item->build_clone(thd->mem_root);	
-	break;
-      case NO_EXTRACTION_FOR_VIEW_FL:
+	if (!cond_and)
+	  return 0;
 	continue;
-      default:
-	fix= extract_cond_for_view(thd, item, view_map);
       }
+      fix= extract_cond_for_view(thd, item, view_map);
       if (!fix && !cond_and)
 	return 0;
       if (!fix) 

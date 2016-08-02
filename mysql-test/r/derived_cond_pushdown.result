@@ -41,7 +41,8 @@ EXPLAIN
         "table_name": "<derived2>",
         "access_type": "ALL",
         "rows": 20,
-        "filtered": 100
+        "filtered": 100,
+        "attached_condition": "(v1.max_c > 214)"
       },
       "buffer_type": "flat",
       "buffer_size": "256Kb",
@@ -146,7 +147,8 @@ EXPLAIN
         "table_name": "<derived2>",
         "access_type": "ALL",
         "rows": 20,
-        "filtered": 100
+        "filtered": 100,
+        "attached_condition": "(v1.a > 6)"
       },
       "buffer_type": "flat",
       "buffer_size": "256Kb",
@@ -259,7 +261,8 @@ EXPLAIN
         "table_name": "<derived2>",
         "access_type": "ALL",
         "rows": 20,
-        "filtered": 100
+        "filtered": 100,
+        "attached_condition": "((v1.a < 2) and (v1.max_c > 400))"
       },
       "buffer_type": "flat",
       "buffer_size": "256Kb",
@@ -384,11 +387,13 @@ EXPLAIN
         "table_name": "<derived2>",
         "access_type": "ALL",
         "rows": 20,
-        "filtered": 100
+        "filtered": 100,
+        "attached_condition": "(((v1.a < 2) and (v1.max_c > 120)) or (v1.a > 7))"
       },
       "buffer_type": "flat",
       "buffer_size": "256Kb",
       "join_type": "BNL",
+      "attached_condition": "(((v1.a < 2) and (v1.max_c > 120)) or (v1.a > 7))",
       "materialized": {
         "query_block": {
           "select_id": 2,
@@ -437,7 +442,8 @@ EXPLAIN
         "table_name": "<derived2>",
         "access_type": "ALL",
         "rows": 20,
-        "filtered": 100
+        "filtered": 100,
+        "attached_condition": "(v2.b > 25)"
       },
       "buffer_type": "flat",
       "buffer_size": "256Kb",
@@ -660,7 +666,7 @@ EXPLAIN
       "access_type": "ALL",
       "rows": 9,
       "filtered": 100,
-      "attached_condition": "(t2.a is not null)"
+      "attached_condition": "((t2.a < 5) and (t2.a is not null))"
     },
     "table": {
       "table_name": "<derived2>",
@@ -707,7 +713,7 @@ EXPLAIN
       "access_type": "ALL",
       "rows": 9,
       "filtered": 100,
-      "attached_condition": "(t2.c is not null)"
+      "attached_condition": "((t2.c > 150) and (t2.c is not null))"
     },
     "table": {
       "table_name": "<derived2>",
@@ -755,7 +761,7 @@ EXPLAIN
       "access_type": "ALL",
       "rows": 9,
       "filtered": 100,
-      "attached_condition": "((t2.a is not null) and (t2.c is not null))"
+      "attached_condition": "((t2.a > 5) and (t2.c > 250) and (t2.a is not null) and (t2.c is not null))"
     },
     "table": {
       "table_name": "<derived2>",

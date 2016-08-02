@@ -89,3 +89,54 @@ select * from v1,t2
 explain format=json
   select * from v1,t2
     where ((t2.a<4) and (v1.a=t2.a)) or ((t2.c>150) and (v1.max_c=t2.c));  
+    
+select * from v1,t2 where
+  ((v1.max_c>300) and (v1.avg_c>t2.d) and (v1.b=t2.b)) or 
+    ((v1.max_c<135) and (v1.max_c<t2.c) and (v1.a=t2.a));
+explain format=json
+  select * from v1,t2 where
+    ((v1.max_c>300) and (v1.avg_c>t2.d) and (v1.b=t2.b)) or 
+      ((v1.max_c<135) and (v1.max_c<t2.c) and (v1.a=t2.a)); 
+      
+select * from v1,t2 where 
+  ((v1.a>4) and (v1.b>t2.b) and (v1.max_c=t2.d)) or 
+    ((v1.a<2) and (v1.max_c<t2.c) and (v1.max_c=t2.d)); 
+explain format=json
+  select * from v1,t2 where 
+    ((v1.a>4) and (v1.b>t2.b) and (v1.max_c=t2.d)) or 
+      ((v1.a<2) and (v1.max_c<t2.c) and (v1.max_c=t2.d)); 
+      
+select * from v1,t2 where 
+  (v1.a>3) and (v1.max_c>200) and (t2.b<v1.b) and (t2.d=v1.max_c);
+explain format=json
+  select * from v1,t2 where 
+    (v1.a>3) and (v1.max_c>200) and (t2.b<v1.b) and (t2.d=v1.max_c);      
+    
+select * from v1,t2 where 
+  ((v1.a<2) and (v1.max_c>120) and (v1.b=t2.b)) or (v1.a>7);   
+explain format=json
+  select * from v1,t2 where 
+    ((v1.a<2) and (v1.max_c>120) and (v1.b=t2.b)) or (v1.a>7);
+    
+select * from v1,t2 where
+  ((v1.a<2) and (v1.max_c<200) and (t2.c>v1.max_c) and (v1.max_c=t2.d)) or
+    ((v1.a>4) and (v1.max_c<500) and (t2.b<v1.b) and (v1.max_c=t2.c));  
+explain format=json
+  select * from v1,t2 where
+    ((v1.a<2) and (v1.max_c<200) and (t2.c>v1.max_c) and (v1.max_c=t2.d)) or
+      ((v1.a>4) and (v1.max_c<500) and (t2.b<v1.b) and (v1.max_c=t2.c));  
+      
+select * from v1,t2 where (v1.a=t2.a) and (v1.b=t2.b);
+explain format=json select * from v1,t2 where (v1.a=t2.a) and (v1.b=t2.b);
+
+select * from v1,t2 where (t2.a=v1.a) and (v1.b=t2.b) and (v1.a=1);
+explain format=json 
+  select * from v1,t2 where (t2.a=v1.a) and (v1.b=t2.b) and (v1.a=1);
+  
+select * from v1,t2 where 
+  (t2.a=v1.a) or (v1.b=t2.b) and ((v1.a=1) or (v1.a=6)); 
+explain format=json  
+  select * from v1,t2 where 
+    (t2.a=v1.a) or (v1.b=t2.b) and ((v1.a=1) or (v1.a=6)); 
+
+    

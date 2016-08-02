@@ -997,70 +997,50 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
   if (cond->get_dep_flags() == NO_EXTRACTION_FOR_VIEW_FL)
     return 0;
   if (cond->get_dep_flags() == DEPENDENCE_ON_VIEW_ONLY_FL)
-  {
-    //cond->marker= 2;
-    return cond;
-  }
+    return cond->build_clone(thd->mem_root);
   bool is_multiple_equality= cond->type() == Item::FUNC_ITEM && 
   ((Item_func*) cond)->functype() == Item_func::MULT_EQUAL_FUNC;
-  if (cond->depends_only_on(view_map) && (is_multiple_equality == FALSE))
-  {
-    //cond->marker= 2;
-    return cond;	
-  }
   if (cond->type() == Item::COND_ITEM)
   {
+    bool cond_and= false;
+    Item_cond *new_cond;
     if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
     {
-      Item_cond_and *new_cond=new (thd->mem_root) Item_cond_and(thd);
-      if (!new_cond)
-	return 0;		
-      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
-      Item *item;
-      while ((item=li++))
-      {
-	Item *fix= extract_cond_for_view(thd, item, view_map);
-	if (fix)
-	{
-	  //fix->marker= 2;
-	  new_cond->argument_list()->push_back(fix, thd->mem_root);
-	}
-      }
-      switch (new_cond->argument_list()->elements) 
-      {
-      case 0:
-	return 0;			
-      case 1:
-	return new_cond->argument_list()->head();
-      default:
-	return new_cond;
-      }
+      cond_and= true;
+      new_cond=new (thd->mem_root) Item_cond_and(thd);
     }
     else
-    {					
-      Item_cond_or *new_cond= new (thd->mem_root) Item_cond_or(thd);
-      if (!new_cond)
-	return 0;			
-      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
-      Item *item;
-      while ((item=li++))
+      new_cond= new (thd->mem_root) Item_cond_or(thd);
+    if (!new_cond)
+      return 0;		
+    List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
+    Item *item;
+    while ((item=li++))
+    {
+      Item *fix;
+      switch (item->depends_only_on(view_map)) 
       {
-	Item *fix= extract_cond_for_view(thd, item, view_map);
-	if (!fix)
-	{
-	  if (new_cond)
-	  {
-	    List_iterator<Item> 
-	      new_li(*((Item_cond*) new_cond)->argument_list());
-	    Item *new_item;
-	    while ((new_item=new_li++))
-	      new_item->marker= 0;
-	  }
-	  return 0;
-	}
-	fix->marker= 1;
-	new_cond->argument_list()->push_back(fix, thd->mem_root);
+      case DEPENDENCE_ON_VIEW_ONLY_FL:
+	fix= item->build_clone(thd->mem_root);	
+	break;
+      case NO_EXTRACTION_FOR_VIEW_FL:
+	continue;
+      default:
+	fix= extract_cond_for_view(thd, item, view_map);
       }
+      if (!fix && !cond_and)
+	return 0;
+      if (!fix) 
+	continue;
+      new_cond->argument_list()->push_back(fix, thd->mem_root);
+    }
+    switch (new_cond->argument_list()->elements) 
+    {
+    case 0:
+      return 0;			
+    case 1:
+      return new_cond->argument_list()->head();
+    default:
       return new_cond;
     }
   }
@@ -1283,8 +1263,8 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   extract_cond= extract_cond_for_view(thd, *cond, derived->table->map);
   if (!extract_cond)
     return false;
-  substitute_for_needed_clones(thd, extract_cond, true);
-  /*thd->change_item_tree(cond, delete_not_needed_parts(thd, *cond));*/
+  /*substitute_for_needed_clones(thd, extract_cond, true);
+  thd->change_item_tree(cond, delete_not_needed_parts(thd, *cond));*/
   st_select_lex_unit *unit= derived->get_unit();
   st_select_lex *sl= unit->first_select();
   for (; sl; sl= sl->next_select())

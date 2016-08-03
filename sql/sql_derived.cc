@@ -1015,14 +1015,13 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
     Item *item;
     while ((item=li++))
     {
-      Item *fix;
       if (item->get_dep_flags() == NO_EXTRACTION_FOR_VIEW_FL)
       {
 	if (!cond_and)
 	  return 0;
 	continue;
       }
-      fix= extract_cond_for_view(thd, item, view_map);
+      Item *fix= extract_cond_for_view(thd, item, view_map);
       if (!fix && !cond_and)
 	return 0;
       if (!fix) 
@@ -1083,6 +1082,8 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
       return new_cond;
     }
   }
+  else if (cond->get_dep_flags() == DEPENDENCE_ON_VIEW_ONLY_FL)
+    return cond->build_clone(thd->mem_root);
   return 0;
 }
 
@@ -1183,64 +1184,59 @@ void collect_grouping_fields(THD *thd, TABLE_LIST *derived,
 /**
   Extract conditions which depends only on fields.
 */ 
+
 static
 Item *extract_cond_for_grouping_fields(THD *thd, Item *cond, 
 				       List<Grouping_tmp_field> *fields,
 				       table_map map)
-{
+{	
   if (cond->check_condition_fields(fields, map))
   {
     cond->marker= 2;
-    return cond;	
+    return cond->build_clone(thd->mem_root);
   }
   if (cond->type() == Item::COND_ITEM)
   {
+    bool cond_and= false;
+    Item_cond *new_cond;
     if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
     {
-      Item_cond_and *new_cond=new (thd->mem_root) Item_cond_and(thd);
-      if (!new_cond)
-	return 0;		
-      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
-      Item *item;
-      while ((item=li++))
-      {
-	Item *fix= extract_cond_for_grouping_fields(thd, item, fields, map);
-	if (fix && fix->check_condition_fields(fields, map))
-	{
-	  fix->marker= 2;
-	  new_cond->argument_list()->push_back(fix, thd->mem_root);
-	}
-      }
-      switch (new_cond->argument_list()->elements) 
-      {
-      case 0:
-	return 0;			
-      case 1:
-	return new_cond->argument_list()->head();
-      default:
-	return new_cond;
-      }
+      cond_and= true;
+      new_cond=new (thd->mem_root) Item_cond_and(thd);
     }
     else
-    {					
-      Item_cond_or *new_cond=new (thd->mem_root) Item_cond_or(thd);
-      if (!new_cond)
-	return 0;			
-      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
-      Item *item;
-      while ((item=li++))
+      new_cond= new (thd->mem_root) Item_cond_or(thd);
+    if (!new_cond)
+      return 0;		
+    List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
+    Item *item;
+    while ((item=li++))
+    {
+      Item *fix= extract_cond_for_grouping_fields(thd, item, fields, map);
+      if (!(fix) || !(fix->check_condition_fields(fields, map)))
       {
-        Item *fix= extract_cond_for_grouping_fields(thd, item, fields, map);
-	if (!(fix) || !(fix->check_condition_fields(fields, map)))
-	  return 0;
-	fix->marker= 1;
-	new_cond->argument_list()->push_back(fix, thd->mem_root);
+	if (!cond_and)
+          return 0;
+	else 
+	  continue;
       }
+      if (cond_and)
+	fix->marker= 2;
+      new_cond->argument_list()->push_back(fix, thd->mem_root);
+    }
+    switch (new_cond->argument_list()->elements) 
+    {
+    case 0:
+      return 0;			
+    case 1:
+      return new_cond->argument_list()->head();
+    default:
       return new_cond;
     }
   }
   return 0;
 }
+
 
 
 /**
@@ -1271,7 +1267,7 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 				       derived->table->map);
     if (!extract_fields)
       break;
-    substitute_for_needed_clones(thd, extract_fields, false);
+   /* substitute_for_needed_clones(thd, extract_fields, false);*/
     thd->change_item_tree(&extract_cond, 
 			  delete_not_needed_parts(thd, extract_cond));
     Item *extract_cond_cl_field= extract_fields;

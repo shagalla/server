@@ -107,8 +107,8 @@ char_to_byte_length_safe(uint32 char_length_arg, uint32 mbmaxlen_arg)
 #define MY_COLL_ALLOW_CONV (MY_COLL_ALLOW_SUPERSET_CONV | MY_COLL_ALLOW_COERCIBLE_CONV)
 #define MY_COLL_CMP_CONV   (MY_COLL_ALLOW_CONV | MY_COLL_DISALLOW_NONE)
 
-#define DEPENDENCE_ON_VIEW_ONLY_FL (1 << 6)
-#define NO_EXTRACTION_FOR_VIEW_FL (1 << 7)
+#define FULL_EXTRACTION_FL (1 << 6)
+#define NO_EXTRACTION_FL (1 << 7)
 
 class DTCollation {
 public:
@@ -1870,13 +1870,13 @@ public:
   void register_in(THD *thd);	 
   
   bool depends_only_on(table_map view_map) 
-  { return marker & DEPENDENCE_ON_VIEW_ONLY_FL; }
+  { return marker & FULL_EXTRACTION_FL; }
   int get_dep_flags() 
   { return  marker & 
-           (DEPENDENCE_ON_VIEW_ONLY_FL | NO_EXTRACTION_FOR_VIEW_FL); }
+           (FULL_EXTRACTION_FL | NO_EXTRACTION_FL); }
   void set_dep_flags(int flags) 
   { 
-    marker &= ~ (DEPENDENCE_ON_VIEW_ONLY_FL | NO_EXTRACTION_FOR_VIEW_FL);
+    marker &= ~ (FULL_EXTRACTION_FL | NO_EXTRACTION_FL);
     marker|= flags; 
   }   
 };

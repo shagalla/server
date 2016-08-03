@@ -996,8 +996,11 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
 {
   bool is_multiple_equality= cond->type() == Item::FUNC_ITEM && 
   ((Item_func*) cond)->functype() == Item_func::MULT_EQUAL_FUNC;
-  if (cond->get_dep_flags() == NO_EXTRACTION_FOR_VIEW_FL)
+  if (cond->get_dep_flags() == NO_EXTRACTION_FL)
+  {
+    
     return 0;
+  }
   if (cond->type() == Item::COND_ITEM)
   {
     bool cond_and= false;
@@ -1015,7 +1018,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
     Item *item;
     while ((item=li++))
     {
-      if (item->get_dep_flags() == NO_EXTRACTION_FOR_VIEW_FL)
+      if (item->get_dep_flags() == NO_EXTRACTION_FL)
       {
 	if (!cond_and)
 	  return 0;
@@ -1082,7 +1085,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
       return new_cond;
     }
   }
-  else if (cond->get_dep_flags() == DEPENDENCE_ON_VIEW_ONLY_FL)
+  else if (cond->get_dep_flags() == FULL_EXTRACTION_FL)
     return cond->build_clone(thd->mem_root);
   return 0;
 }
@@ -1126,9 +1129,9 @@ void substitute_for_needed_clones(THD *thd, Item *cond, bool always_clone)
 
 Item *delete_not_needed_parts(THD *thd, Item *cond)
 {
-  if (cond->marker == 2)
+  if (cond->get_dep_flags() == FULL_EXTRACTION_FL)
   {
-    cond->marker= 0;
+    cond->set_dep_flags(0);
     return 0; 
   }
   if (cond->type() == Item::COND_ITEM)
@@ -1139,9 +1142,9 @@ Item *delete_not_needed_parts(THD *thd, Item *cond)
       Item *item;
       while ((item= li++))
       {
-	if (item->marker == 2)
+	if (item->get_dep_flags() == FULL_EXTRACTION_FL)
 	{
-	  item->marker= 0;
+	  item->set_dep_flags(0);
 	  li.remove();
 	}
       }
@@ -1190,11 +1193,6 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
 				       List<Grouping_tmp_field> *fields,
 				       table_map map)
 {	
-  if (cond->check_condition_fields(fields, map))
-  {
-    cond->marker= 2;
-    return cond->build_clone(thd->mem_root);
-  }
   if (cond->type() == Item::COND_ITEM)
   {
     bool cond_and= false;
@@ -1212,16 +1210,17 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
     Item *item;
     while ((item=li++))
     {
-      Item *fix= extract_cond_for_grouping_fields(thd, item, fields, map);
-      if (!(fix) || !(fix->check_condition_fields(fields, map)))
+      if (item->get_dep_flags() == NO_EXTRACTION_FL)
       {
 	if (!cond_and)
-          return 0;
-	else 
-	  continue;
+	  return 0;
+	continue;
       }
-      if (cond_and)
-	fix->marker= 2;
+      Item *fix= extract_cond_for_grouping_fields(thd, item, fields, map);
+      if (!fix && !cond_and)
+	return 0;
+      if (!fix) 
+	continue;
       new_cond->argument_list()->push_back(fix, thd->mem_root);
     }
     switch (new_cond->argument_list()->elements) 
@@ -1234,6 +1233,8 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
       return new_cond;
     }
   }
+  else if (cond->get_dep_flags() == FULL_EXTRACTION_FL)
+    return cond->build_clone(thd->mem_root);
   return 0;
 }
 
@@ -1262,6 +1263,7 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   {
     List<Grouping_tmp_field> grouping_tmp_field;
     collect_grouping_fields(thd, derived, sl, &grouping_tmp_field);
+    extract_cond->check_condition_fields(&grouping_tmp_field, derived->table->map);
     Item *extract_fields= 
       extract_cond_for_grouping_fields(thd, extract_cond, &grouping_tmp_field,
 				       derived->table->map);

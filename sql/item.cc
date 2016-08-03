@@ -2277,10 +2277,16 @@ bool Item_func_or_sum::check_condition_fields(List<Grouping_tmp_field> *fields,
         while ((field=li++))
         {
 	  if (((Item_field*) args[i])->field == field->tmp_field)
+	  {
+	    set_dep_flags(FULL_EXTRACTION_FL);
 	    break;
+	  }
         }
         if (!field)
+	{
+	  set_dep_flags(NO_EXTRACTION_FL);
 	  return false;
+	}
       }
       else if (((Item_field*)args[i])->item_equal)
       {
@@ -2295,10 +2301,14 @@ bool Item_func_or_sum::check_condition_fields(List<Grouping_tmp_field> *fields,
             while ((field=li++))
             {
 	      if (((Item_field *)item)->field == field->tmp_field)
+	      {
+		set_dep_flags(FULL_EXTRACTION_FL);
 	        goto found;
+	      }
             }
 	  }
 	}
+	set_dep_flags(NO_EXTRACTION_FL);
 	return false;
 found: ;	
       }

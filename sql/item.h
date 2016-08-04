@@ -1499,6 +1499,7 @@ public:
   virtual bool exists2in_processor(uchar *opt_arg) { return 0; }
   virtual bool find_selective_predicates_list_processor(uchar *opt_arg)
   { return 0; }
+  virtual bool exclusive_dependence_processor(uchar *map) { return 0; }
   virtual Item *get_copy(MEM_ROOT *mem_root);
   virtual Item *get_copy(THD *thd, MEM_ROOT *mem_root);
   
@@ -2578,6 +2579,7 @@ public:
   int fix_outer_field(THD *thd, Field **field, Item **reference);
   virtual Item *update_value_transformer(THD *thd, uchar *select_arg);
   virtual void print(String *str, enum_query_type query_type);
+  bool exclusive_dependence_processor(uchar *map);
   Item_field *get_copy(MEM_ROOT *mem_root) 
   { return new (mem_root) Item_field(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)

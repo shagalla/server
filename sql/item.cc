@@ -9944,6 +9944,14 @@ const char *dbug_print_item(Item *item)
 #endif /*DBUG_OFF*/
 
 
+bool Item_field::exclusive_dependence_processor(uchar *map)
+{
+  table_map view_map= (table_map)map;
+  return !((used_tables() == view_map || 
+         (item_equal && item_equal->used_tables() & view_map))); 
+}
+
+
 Item *Item::get_copy(MEM_ROOT *mem_root)
 {
   dbug_print_item(this); 

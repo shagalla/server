@@ -988,6 +988,38 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
 }
 
 
+void check_cond_extraction_for_view(Item *cond, table_map view_map)
+{
+  cond->set_dep_flags(0);
+  if (cond->type() == Item::COND_ITEM)
+  {
+    bool and_cond= ((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC;
+    List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
+    uint count= 0;
+    Item *item;
+    while ((item=li++))
+    {
+      check_cond_extraction_for_view(item, view_map);
+      if (item->get_dep_flags() !=  NO_EXTRACTION_FL)
+        count++;
+      else if (!and_cond)
+        break;
+    }
+    if ((and_cond && count == 0) || item)
+    {
+      cond->set_dep_flags(NO_EXTRACTION_FL);
+      if (and_cond)
+        li.rewind();
+      while ((item= li++))
+        item->set_dep_flags(0);
+    }
+  }
+  else if (cond->walk(&Item::exclusive_dependence_processor,
+                      0, (uchar *) &view_map))
+    cond->set_dep_flags(NO_EXTRACTION_FL);
+}
+
+
 /**
   Extract condition, which depends only on view.
 */ 
@@ -997,10 +1029,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
   bool is_multiple_equality= cond->type() == Item::FUNC_ITEM && 
   ((Item_func*) cond)->functype() == Item_func::MULT_EQUAL_FUNC;
   if (cond->get_dep_flags() == NO_EXTRACTION_FL)
-  {
-    
     return 0;
-  }
   if (cond->type() == Item::COND_ITEM)
   {
     bool cond_and= false;
@@ -1043,49 +1072,50 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
   }
   else if (is_multiple_equality)
   {
-  if (cond->depends_only_on(view_map))
+    if (!(cond->used_tables() & view_map))
+      return 0;
+    Item *new_cond= NULL;
+    int i= 0;
+    Item_equal *item_equal= (Item_equal *) cond;
+    Item *left_item = item_equal->get_const();
+    Item_equal_fields_iterator it(*item_equal);
+    Item *item;
+    if (!left_item)
     {
-      Item *new_cond= NULL;
-      int i= 0;
-      Item_equal *item_equal= (Item_equal *) cond;
-      Item *const_item = item_equal->get_const();
-      Item_equal_fields_iterator it(*item_equal);
-      Item *item;
-      item=it++;
-      if (!const_item)
-	const_item= item;
-      else
-	it.rewind();
-      if (cond->depends_only_on(view_map))
+      while ((item=it++))
+      if (item->used_tables() == view_map)
       {
-	while ((item=it++))
+        left_item= item;
+        break;
+      }
+    }
+    if (!left_item)
+      return 0;
+    while ((item=it++))
+    {
+      if (!(item->used_tables() == view_map))
+	continue;
+      Item_func_eq *eq= 
+	new (thd->mem_root) Item_func_eq(thd, item, left_item);
+      if (eq)
+      {
+	i++;
+	switch (i)
 	{
-	  if (item->used_tables() & view_map)
-	  {
-	    Item_func_eq *eq= 
-	      new (thd->mem_root) Item_func_eq(thd, item, const_item);
-	    if (eq)
-	    {
-	      i++;
-	      switch (i)
-	      {
-		case 1:
-		  new_cond= eq;
-		  break;
-		case 2:
-		  new_cond= new (thd->mem_root) Item_cond_and(thd, new_cond, eq);
-		  break;
-		default:
-		  ((Item_cond_and*)new_cond)->argument_list()->push_back(eq, thd->mem_root);
-	      }
-	    }
-	  }
+	case 1:
+	  new_cond= eq;
+	  break;
+	case 2:
+	  new_cond= new (thd->mem_root) Item_cond_and(thd, new_cond, eq);
+	  break;
+	default:
+	  ((Item_cond_and*)new_cond)->argument_list()->push_back(eq, thd->mem_root);
 	}
       }
-      return new_cond;
     }
+    return new_cond;
   }
-  else if (cond->get_dep_flags() == FULL_EXTRACTION_FL)
+  else if (cond->get_dep_flags() != NO_EXTRACTION_FL)
     return cond->build_clone(thd->mem_root);
   return 0;
 }
@@ -1248,7 +1278,8 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 {
   if (!*cond)
     return false;
-  (*cond)->dep_only_on(derived->table->map);
+  //(*cond)->dep_only_on(derived->table->map);
+  check_cond_extraction_for_view(*cond, derived->table->map);
   Item *extract_cond;
   /** Building AND OR structure, consisting condition 
       which is going to be pushed down*/

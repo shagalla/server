@@ -9946,7 +9946,7 @@ const char *dbug_print_item(Item *item)
 
 bool Item_field::exclusive_dependence_processor(uchar *map)
 {
-  table_map view_map= (table_map)map;
+  table_map view_map= *((table_map *) map);
   return !((used_tables() == view_map || 
          (item_equal && item_equal->used_tables() & view_map))); 
 }

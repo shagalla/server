@@ -9952,6 +9952,42 @@ bool Item_field::exclusive_dependence_processor(uchar *map)
 }
 
 
+bool Item_field::conditions_for_where_processor(uchar *arg)
+{
+  Grouping_param *view_struct= (Grouping_param *)arg;
+  List_iterator<Grouping_tmp_field> li(*view_struct->fields);
+  Grouping_tmp_field *field;
+  table_map map= view_struct->view_map;
+  if (used_tables() == map)
+  {
+    while ((field=li++))
+    {
+      if (((Item_field*) this)->field == field->tmp_field)
+        return false;
+    }
+  }
+  else if (((Item_field*)this)->item_equal)
+  {
+    Item_equal *cond= (Item_equal *) ((Item_field*)this)->item_equal;
+    Item_equal_fields_iterator it(*cond);
+    Item *item;
+    while ((item=it++))
+    {
+      if (item->used_tables() == map && item->type() == FIELD_ITEM)
+      {
+	li.rewind();
+        while ((field=li++))
+        {
+	  if (((Item_field *)item)->field == field->tmp_field)
+	    return false;
+	}
+      }
+    }
+  }
+  return true;
+}
+
+
 Item *Item::get_copy(MEM_ROOT *mem_root)
 {
   dbug_print_item(this); 

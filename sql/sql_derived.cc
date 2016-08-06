@@ -1214,6 +1214,49 @@ void collect_grouping_fields(THD *thd, TABLE_LIST *derived,
 }
 
 
+void check_cond_extraction_for_grouping_fields(Item *cond, table_map view_map,
+					      List<Grouping_tmp_field> *fields)
+{
+  cond->set_dep_flags(0);
+  Grouping_param arg_param= {view_map, fields};
+  if (cond->type() == Item::COND_ITEM)
+  {
+    bool and_cond= ((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC;
+    List<Item> *arg_list=  ((Item_cond*) cond)->argument_list();
+    List_iterator<Item> li(*arg_list);
+    uint count= 0;
+    uint count_full= 0;
+    Item *item;
+    while ((item=li++))
+    {
+      check_cond_extraction_for_grouping_fields(item, view_map, fields);
+      if (item->get_dep_flags() !=  NO_EXTRACTION_FL)
+      {
+        count++;
+        if (item->get_dep_flags() == FULL_EXTRACTION_FL)
+	  count_full++;
+      }
+      else if (!and_cond)
+        break;
+    }
+    if ((and_cond && count == 0) || item)
+      cond->set_dep_flags(NO_EXTRACTION_FL);
+    if (count_full == arg_list->elements)
+      cond->set_dep_flags(FULL_EXTRACTION_FL);
+    if (cond->get_dep_flags() != 0)
+    {
+      li.rewind();
+      while ((item=li++))
+        item->set_dep_flags(0);
+    }
+  }
+  else 
+    cond->set_dep_flags(cond->walk(&Item::conditions_for_where_processor, 
+				   0, (uchar *) &arg_param) ?
+     NO_EXTRACTION_FL : FULL_EXTRACTION_FL);
+}
+
+
 /**
   Extract conditions which depends only on fields.
 */ 
@@ -1223,7 +1266,9 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
 				       List<Grouping_tmp_field> *fields,
 				       table_map map)
 {	
-  if (cond->type() == Item::COND_ITEM)
+  if (cond->get_dep_flags() == FULL_EXTRACTION_FL)
+    return cond->build_clone(thd->mem_root);
+  else if (cond->type() == Item::COND_ITEM)
   {
     bool cond_and= false;
     Item_cond *new_cond;
@@ -1263,8 +1308,6 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
       return new_cond;
     }
   }
-  else if (cond->get_dep_flags() == FULL_EXTRACTION_FL)
-    return cond->build_clone(thd->mem_root);
   return 0;
 }
 
@@ -1294,7 +1337,9 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   {
     List<Grouping_tmp_field> grouping_tmp_field;
     collect_grouping_fields(thd, derived, sl, &grouping_tmp_field);
-    extract_cond->check_condition_fields(&grouping_tmp_field, derived->table->map);
+    //extract_cond->check_condition_fields(&grouping_tmp_field, derived->table->map);
+    check_cond_extraction_for_grouping_fields(extract_cond, derived->table->map, 
+					      &grouping_tmp_field);
     Item *extract_fields= 
       extract_cond_for_grouping_fields(thd, extract_cond, &grouping_tmp_field,
 				       derived->table->map);

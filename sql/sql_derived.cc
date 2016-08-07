@@ -1121,35 +1121,23 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
 }
 
 
-/**
-  Making clones for OR-conditions, which depends on view.
-*/ 
-
-void substitute_for_needed_clones(THD *thd, Item *cond, bool always_clone)
+void field_transformer_having(Item *cond, THD *thd, table_map map, 
+			      st_select_lex *sl)
 {
+  Transformer_param arg_param= {map, sl};
   if (cond->type() == Item::COND_ITEM)
   {
-    if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
+    List_iterator_fast<Item> li(*((Item_cond*) cond)->argument_list());
+    Item *item;
+    while ((item= li++))
     {
-      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
-      Item *item;
-      while ((item= li++))
-	substitute_for_needed_clones(thd, item, always_clone);
-    }
-    else
-    {							
-      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
-      Item *item;
-      while ((item= li++))
-      {
-        if (always_clone ||  (item->marker & 3) == 1)
-	{
-	  Item *clone_it= item->build_clone(thd->mem_root);
-	  li.replace(clone_it);
-	}
-      }
+      item->transform(thd, &Item::derived_field_transformer_for_having,
+                      (uchar*) &arg_param);
     }
   }
+  else
+   cond->transform(thd, &Item::derived_field_transformer_for_having,
+                   (uchar*) &arg_param); 
 }
 
 
@@ -1312,6 +1300,26 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
 }
 
 
+void field_transformer_where(Item *cond, THD *thd, table_map map, 
+			     List<Grouping_tmp_field> *fields)
+{
+  Grouping_param arg_param= {map, fields};
+  if (cond->type() == Item::COND_ITEM)
+  {
+    List_iterator_fast<Item> li(*((Item_cond*) cond)->argument_list());
+    Item *item;
+    while ((item= li++))
+    {
+      item->transform(thd, &Item::derived_field_transformer_for_where,
+                      (uchar*) &arg_param);
+    }
+  }
+  else
+    cond->transform(thd, &Item::derived_field_transformer_for_where,
+                   (uchar*) &arg_param);
+}
+
+
 
 /**
   Pushing down conditions into HAVING-part of view/derived table.
@@ -1321,7 +1329,6 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 {
   if (!*cond)
     return false;
-  //(*cond)->dep_only_on(derived->table->map);
   check_cond_extraction_for_view(*cond, derived->table->map);
   Item *extract_cond;
   /** Building AND OR structure, consisting condition 
@@ -1329,15 +1336,12 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   extract_cond= extract_cond_for_view(thd, *cond, derived->table->map);
   if (!extract_cond)
     return false;
-  /*substitute_for_needed_clones(thd, extract_cond, true);
-  thd->change_item_tree(cond, delete_not_needed_parts(thd, *cond));*/
   st_select_lex_unit *unit= derived->get_unit();
   st_select_lex *sl= unit->first_select();
   for (; sl; sl= sl->next_select())
   {
     List<Grouping_tmp_field> grouping_tmp_field;
     collect_grouping_fields(thd, derived, sl, &grouping_tmp_field);
-    //extract_cond->check_condition_fields(&grouping_tmp_field, derived->table->map);
     check_cond_extraction_for_grouping_fields(extract_cond, derived->table->map, 
 					      &grouping_tmp_field);
     Item *extract_fields= 
@@ -1345,17 +1349,13 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 				       derived->table->map);
     if (!extract_fields)
       break;
-   /* substitute_for_needed_clones(thd, extract_fields, false);*/
     thd->change_item_tree(&extract_cond, 
 			  delete_not_needed_parts(thd, extract_cond));
     Item *extract_cond_cl_field= extract_fields;
     if (sl->next_select())
       extract_cond_cl_field= extract_cond->build_clone(thd->mem_root);
-    if 
-      (extract_cond_cl_field->field_transformer_for_where(thd, 
-							  &grouping_tmp_field,
-							  derived->table->map))
-      return true;
+    field_transformer_where(extract_cond_cl_field, thd, derived->table->map, 
+			    &grouping_tmp_field);
     extract_cond_cl_field->walk(&Item::cleanup_processor, 0, 0);
     thd->change_item_tree(&sl->join->conds, 
 			  and_conds(thd, sl->join->conds, 
@@ -1375,8 +1375,7 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
     if (sl->next_select())
       thd->change_item_tree(&extract_cond_cl,
 			    extract_cond->build_clone(thd->mem_root));
-    if (extract_cond_cl->field_transformer(thd, derived->table->map, sl))
-      return true;
+    field_transformer_having(extract_cond_cl, thd, derived->table->map, sl);
     extract_cond_cl->walk(&Item::cleanup_processor, 0, 0);
     thd->change_item_tree(&sl->join->having,
 			  and_conds(thd, sl->join->having, extract_cond_cl));

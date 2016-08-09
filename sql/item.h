@@ -608,28 +608,6 @@ public:
 };
 
 
-class Grouping_tmp_field :public Sql_alloc
-{
-public:
-  Field *tmp_field;
-  Item *producing_item;
-  Grouping_tmp_field(Field *fld, Item *item) 
-     :tmp_field(fld), producing_item(item) {}
-};
-
-
-typedef struct st_grouping_param{
-  table_map view_map;
-  List<Grouping_tmp_field> *fields;
-} Grouping_param;
-
-
-typedef struct field_transformer_param{
-  table_map view_map;
-  st_select_lex *sl;
-} Transformer_param;
-
-
 class Item: public Value_source,
             public Type_std_attributes,
             public Type_handler

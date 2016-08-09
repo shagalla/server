@@ -6586,9 +6586,8 @@ Item *Item_field::update_value_transformer(THD *thd, uchar *select_arg)
 
 Item *Item_field::derived_field_transformer_for_having(THD *thd, uchar *arg)
 {
-  Transformer_param *view_struct= (Transformer_param *)arg;
-  table_map map= view_struct->view_map;
-  st_select_lex *sl= view_struct->sl;
+  st_select_lex *sl= (st_select_lex *)arg;
+  table_map map= sl->master_unit()->derived->table->map;
   if (!((Item_field*)this)->item_equal)
   {
     if (used_tables() == map)
@@ -6627,10 +6626,10 @@ Item *Item_field::derived_field_transformer_for_having(THD *thd, uchar *arg)
 
 Item *Item_field::derived_field_transformer_for_where(THD *thd, uchar *arg)
 {
-  Grouping_param *view_struct= (Grouping_param *)arg;
-  List_iterator<Grouping_tmp_field> li(*view_struct->fields);
+  st_select_lex *sl= (st_select_lex *)arg;
+  List_iterator<Grouping_tmp_field> li(sl->grouping_tmp_fields);
   Grouping_tmp_field *field;
-  table_map map= view_struct->view_map;
+  table_map map= sl->master_unit()->derived->table->map;
   if (used_tables() == map)
   {
     while ((field=li++))
@@ -9846,10 +9845,10 @@ bool Item_field::exclusive_dependence_processor(uchar *map)
 
 bool Item_field::conditions_for_where_processor(uchar *arg)
 {
-  Grouping_param *view_struct= (Grouping_param *)arg;
-  List_iterator<Grouping_tmp_field> li(*view_struct->fields);
+  st_select_lex *sl= (st_select_lex *)arg;
+  List_iterator<Grouping_tmp_field> li(sl->grouping_tmp_fields);
   Grouping_tmp_field *field;
-  table_map map= view_struct->view_map;
+  table_map map= sl->master_unit()->derived->table->map;
   if (used_tables() == map)
   {
     while ((field=li++))

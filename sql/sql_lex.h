@@ -726,6 +726,15 @@ public:
 typedef class st_select_lex_unit SELECT_LEX_UNIT;
 typedef Bounds_checked_array<Item*> Ref_ptr_array;
 
+class Grouping_tmp_field :public Sql_alloc
+{
+public:
+  Field *tmp_field;
+  Item *producing_item;
+  Grouping_tmp_field(Field *fld, Item *item) 
+     :tmp_field(fld), producing_item(item) {}
+};
+
 /*
   SELECT_LEX - store information of parsed SELECT statment
 */
@@ -910,6 +919,8 @@ public:
 
   /* namp of nesting SELECT visibility (for aggregate functions check) */
   nesting_map name_visibility_map;
+  
+  List<Grouping_tmp_field> grouping_tmp_fields;
 
   void init_query();
   void init_select();
@@ -1097,6 +1108,7 @@ public:
     return master_unit()->with_element;
   }
   With_element *find_table_def_in_with_clauses(TABLE_LIST *table);
+  void collect_grouping_fields(THD *thd); 
 
   List<Window_spec> window_specs;
   void prepare_add_window_spec(THD *thd);
@@ -3192,6 +3204,7 @@ public:
     m_yacc.reset();
   }
 };
+
 
 extern sql_digest_state *
 digest_add_token(sql_digest_state *state, uint token, LEX_YYSTYPE yylval);

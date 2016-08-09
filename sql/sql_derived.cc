@@ -988,8 +988,9 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
 }
 
 
-void check_cond_extraction_for_view(Item *cond, table_map view_map)
+void TABLE_LIST::check_pushable_cond_for_table(Item *cond)
 {
+  table_map tab_map= table->map;
   cond->set_dep_flags(0);
   if (cond->type() == Item::COND_ITEM)
   {
@@ -999,7 +1000,7 @@ void check_cond_extraction_for_view(Item *cond, table_map view_map)
     Item *item;
     while ((item=li++))
     {
-      check_cond_extraction_for_view(item, view_map);
+      check_pushable_cond_for_table(item);
       if (item->get_dep_flags() !=  NO_EXTRACTION_FL)
         count++;
       else if (!and_cond)
@@ -1015,7 +1016,7 @@ void check_cond_extraction_for_view(Item *cond, table_map view_map)
     }
   }
   else if (cond->walk(&Item::exclusive_dependence_processor,
-                      0, (uchar *) &view_map))
+                      0, (uchar *) &tab_map))
     cond->set_dep_flags(NO_EXTRACTION_FL);
 }
 
@@ -1024,8 +1025,9 @@ void check_cond_extraction_for_view(Item *cond, table_map view_map)
   Extract condition, which depends only on view.
 */ 
 
-Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map) 
+Item* TABLE_LIST::build_pushable_cond_for_table(THD *thd, Item *cond) 
 {
+  table_map tab_map= table->map;
   bool is_multiple_equality= cond->type() == Item::FUNC_ITEM && 
   ((Item_func*) cond)->functype() == Item_func::MULT_EQUAL_FUNC;
   if (cond->get_dep_flags() == NO_EXTRACTION_FL)
@@ -1053,7 +1055,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
 	  return 0;
 	continue;
       }
-      Item *fix= extract_cond_for_view(thd, item, view_map);
+      Item *fix= build_pushable_cond_for_table(thd, item);
       if (!fix && !cond_and)
 	return 0;
       if (!fix) 
@@ -1072,7 +1074,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
   }
   else if (is_multiple_equality)
   {
-    if (!(cond->used_tables() & view_map))
+    if (!(cond->used_tables() & tab_map))
       return 0;
     Item *new_cond= NULL;
     int i= 0;
@@ -1083,7 +1085,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
     if (!left_item)
     {
       while ((item=it++))
-      if (item->used_tables() == view_map)
+      if (item->used_tables() == tab_map)
       {
         left_item= item;
         break;
@@ -1093,7 +1095,7 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
       return 0;
     while ((item=it++))
     {
-      if (!(item->used_tables() == view_map))
+      if (!(item->used_tables() == tab_map))
 	continue;
       Item_func_eq *eq= 
 	new (thd->mem_root) Item_func_eq(thd, item, left_item);
@@ -1121,10 +1123,8 @@ Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map)
 }
 
 
-void field_transformer_having(Item *cond, THD *thd, table_map map, 
-			      st_select_lex *sl)
+void field_transformer_having(Item *cond, THD *thd, st_select_lex *sl)
 {
-  Transformer_param arg_param= {map, sl};
   if (cond->type() == Item::COND_ITEM)
   {
     List_iterator_fast<Item> li(*((Item_cond*) cond)->argument_list());
@@ -1132,12 +1132,12 @@ void field_transformer_having(Item *cond, THD *thd, table_map map,
     while ((item= li++))
     {
       item->transform(thd, &Item::derived_field_transformer_for_having,
-                      (uchar*) &arg_param);
+                      (uchar*) sl);
     }
   }
   else
    cond->transform(thd, &Item::derived_field_transformer_for_having,
-                   (uchar*) &arg_param); 
+                   (uchar*) sl); 
 }
 
 
@@ -1180,33 +1180,29 @@ Item *delete_not_needed_parts(THD *thd, Item *cond)
   return cond;
 }
 
-static
-void collect_grouping_fields(THD *thd, TABLE_LIST *derived, 
-			     st_select_lex *sl, 
-			     List<Grouping_tmp_field> *fields_list) 
+
+void st_select_lex::collect_grouping_fields(THD *thd) 
 {
-  List_iterator<Item> li(sl->join->fields_list);
+  List_iterator<Item> li(join->fields_list);
   Item *item= li++;
-  for (uint i= 0; i < derived->table->s->fields; i++, (item=li++))
+  for (uint i= 0; i < master_unit()->derived->table->s->fields; i++, (item=li++))
   {
-    for (ORDER *ord= sl->join->group_list; ord; ord= ord->next)
+    for (ORDER *ord= join->group_list; ord; ord= ord->next)
     {
       if ((*ord->item)->eq((Item*)item, 0))
       {
 	Grouping_tmp_field *grouping_tmp_field= 
-	  new Grouping_tmp_field(derived->table->field[i], item);
-	fields_list->push_back(grouping_tmp_field);
+	  new Grouping_tmp_field(master_unit()->derived->table->field[i], item);
+	grouping_tmp_fields.push_back(grouping_tmp_field);
       }
     }
   }
 }
 
 
-void check_cond_extraction_for_grouping_fields(Item *cond, table_map view_map,
-					      List<Grouping_tmp_field> *fields)
+void check_cond_extraction_for_grouping_fields(Item *cond, st_select_lex *sl)
 {
   cond->set_dep_flags(0);
-  Grouping_param arg_param= {view_map, fields};
   if (cond->type() == Item::COND_ITEM)
   {
     bool and_cond= ((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC;
@@ -1217,7 +1213,7 @@ void check_cond_extraction_for_grouping_fields(Item *cond, table_map view_map,
     Item *item;
     while ((item=li++))
     {
-      check_cond_extraction_for_grouping_fields(item, view_map, fields);
+      check_cond_extraction_for_grouping_fields(item, sl);
       if (item->get_dep_flags() !=  NO_EXTRACTION_FL)
       {
         count++;
@@ -1240,7 +1236,7 @@ void check_cond_extraction_for_grouping_fields(Item *cond, table_map view_map,
   }
   else 
     cond->set_dep_flags(cond->walk(&Item::conditions_for_where_processor, 
-				   0, (uchar *) &arg_param) ?
+				   0, (uchar *) sl) ?
      NO_EXTRACTION_FL : FULL_EXTRACTION_FL);
 }
 
@@ -1250,10 +1246,9 @@ void check_cond_extraction_for_grouping_fields(Item *cond, table_map view_map,
 */ 
 
 static
-Item *extract_cond_for_grouping_fields(THD *thd, Item *cond, 
-				       List<Grouping_tmp_field> *fields,
-				       table_map map)
-{	
+Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
+				       st_select_lex *sl)
+{
   if (cond->get_dep_flags() == FULL_EXTRACTION_FL)
     return cond->build_clone(thd->mem_root);
   else if (cond->type() == Item::COND_ITEM)
@@ -1279,7 +1274,7 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
 	  return 0;
 	continue;
       }
-      Item *fix= extract_cond_for_grouping_fields(thd, item, fields, map);
+      Item *fix= extract_cond_for_grouping_fields(thd, item, sl);
       if (!fix && !cond_and)
 	return 0;
       if (!fix) 
@@ -1300,10 +1295,8 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
 }
 
 
-void field_transformer_where(Item *cond, THD *thd, table_map map, 
-			     List<Grouping_tmp_field> *fields)
+void field_transformer_where(Item *cond, THD *thd, st_select_lex *sl)
 {
-  Grouping_param arg_param= {map, fields};
   if (cond->type() == Item::COND_ITEM)
   {
     List_iterator_fast<Item> li(*((Item_cond*) cond)->argument_list());
@@ -1311,14 +1304,13 @@ void field_transformer_where(Item *cond, THD *thd, table_map map,
     while ((item= li++))
     {
       item->transform(thd, &Item::derived_field_transformer_for_where,
-                      (uchar*) &arg_param);
+                      (uchar*) sl);
     }
   }
   else
     cond->transform(thd, &Item::derived_field_transformer_for_where,
-                   (uchar*) &arg_param);
+                   (uchar*) sl);
 }
-
 
 
 /**
@@ -1329,24 +1321,22 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 {
   if (!*cond)
     return false;
-  check_cond_extraction_for_view(*cond, derived->table->map);
+  derived->check_pushable_cond_for_table(*cond);
   Item *extract_cond;
   /** Building AND OR structure, consisting condition 
       which is going to be pushed down*/
-  extract_cond= extract_cond_for_view(thd, *cond, derived->table->map);
+  extract_cond= derived->build_pushable_cond_for_table(thd, *cond);
   if (!extract_cond)
     return false;
   st_select_lex_unit *unit= derived->get_unit();
   st_select_lex *sl= unit->first_select();
   for (; sl; sl= sl->next_select())
   {
-    List<Grouping_tmp_field> grouping_tmp_field;
-    collect_grouping_fields(thd, derived, sl, &grouping_tmp_field);
-    check_cond_extraction_for_grouping_fields(extract_cond, derived->table->map, 
-					      &grouping_tmp_field);
+    sl->collect_grouping_fields(thd);
+    check_cond_extraction_for_grouping_fields(extract_cond, 
+					      sl);
     Item *extract_fields= 
-      extract_cond_for_grouping_fields(thd, extract_cond, &grouping_tmp_field,
-				       derived->table->map);
+      extract_cond_for_grouping_fields(thd, extract_cond, sl);
     if (!extract_fields)
       break;
     thd->change_item_tree(&extract_cond, 
@@ -1354,8 +1344,7 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
     Item *extract_cond_cl_field= extract_fields;
     if (sl->next_select())
       extract_cond_cl_field= extract_cond->build_clone(thd->mem_root);
-    field_transformer_where(extract_cond_cl_field, thd, derived->table->map, 
-			    &grouping_tmp_field);
+    field_transformer_where(extract_cond_cl_field, thd, sl);
     extract_cond_cl_field->walk(&Item::cleanup_processor, 0, 0);
     thd->change_item_tree(&sl->join->conds, 
 			  and_conds(thd, sl->join->conds, 
@@ -1375,7 +1364,7 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
     if (sl->next_select())
       thd->change_item_tree(&extract_cond_cl,
 			    extract_cond->build_clone(thd->mem_root));
-    field_transformer_having(extract_cond_cl, thd, derived->table->map, sl);
+    field_transformer_having(extract_cond_cl, thd, sl);
     extract_cond_cl->walk(&Item::cleanup_processor, 0, 0);
     thd->change_item_tree(&sl->join->having,
 			  and_conds(thd, sl->join->having, extract_cond_cl));

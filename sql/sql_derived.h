@@ -37,8 +37,6 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived);
 */
 bool mysql_derived_cleanup(THD *thd, LEX *lex, TABLE_LIST *derived);
 
-Item *extract_cond_for_view(THD *thd, Item *cond, table_map view_map); 
-
 Item *delete_not_needed_parts(THD *thd, Item *cond);
 
 bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived);

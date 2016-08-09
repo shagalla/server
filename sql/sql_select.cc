@@ -1260,8 +1260,11 @@ JOIN::optimize_inner()
   {
     if (tbl->is_materialized_derived())
     {
-      if (pushdown_cond_for_derived(thd, &conds, tbl))
-	DBUG_RETURN(1);
+      if (optimizer_flag(thd, OPTIMIZER_SWITCH_COND_PUSHDOWN_FOR_DERIVED))
+      {
+        if (pushdown_cond_for_derived(thd, &conds, tbl))
+	  DBUG_RETURN(1);
+      }
     }
   }
   

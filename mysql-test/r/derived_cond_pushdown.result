@@ -2765,5 +2765,112 @@ EXPLAIN
     }
   }
 }
+set optimizer_switch="condition_pushdown_for_derived=off";
+select * from v1,t2 where (v1.a=t2.a) and (v1.b>2) and (v1.max_c>200);
+a	b	max_c	avg_c	a	b	c	d
+1	21	500	234.6000	1	21	909	12
+8	33	404	213.6667	8	64	248	107
+6	20	315	279.3333	6	20	315	279
+1	21	500	234.6000	1	19	203	107
+8	33	404	213.6667	8	80	800	314
+6	20	315	279.3333	6	23	303	909
+explain format=json 
+select * from v1,t2 where (v1.a=t2.a) and (v1.b>2) and (v1.max_c>200);
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100,
+      "attached_condition": "(t2.a is not null)"
+    },
+    "table": {
+      "table_name": "<derived2>",
+      "access_type": "ref",
+      "possible_keys": ["key0"],
+      "key": "key0",
+      "key_length": "5",
+      "used_key_parts": ["a"],
+      "ref": ["test.t2.a"],
+      "rows": 2,
+      "filtered": 100,
+      "attached_condition": "((v1.b > 2) and (v1.max_c > 200))",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "(max_c < 707)",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+set optimizer_switch="condition_pushdown_for_derived=on";
+select * from v1,t2 where (v1.a=t2.a) and (v1.b>2) and (v1.max_c>200);
+a	b	max_c	avg_c	a	b	c	d
+1	21	500	234.6000	1	21	909	12
+8	33	404	213.6667	8	64	248	107
+6	20	315	279.3333	6	20	315	279
+1	21	500	234.6000	1	19	203	107
+8	33	404	213.6667	8	80	800	314
+6	20	315	279.3333	6	23	303	909
+explain format=json 
+select * from v1,t2 where (v1.a=t2.a) and (v1.b>2) and (v1.max_c>200);
+EXPLAIN
+{
+  "query_block": {
+    "select_id": 1,
+    "table": {
+      "table_name": "t2",
+      "access_type": "ALL",
+      "rows": 9,
+      "filtered": 100,
+      "attached_condition": "(t2.a is not null)"
+    },
+    "table": {
+      "table_name": "<derived2>",
+      "access_type": "ref",
+      "possible_keys": ["key0"],
+      "key": "key0",
+      "key_length": "5",
+      "used_key_parts": ["a"],
+      "ref": ["test.t2.a"],
+      "rows": 2,
+      "filtered": 100,
+      "attached_condition": "((v1.b > 2) and (v1.max_c > 200))",
+      "materialized": {
+        "query_block": {
+          "select_id": 2,
+          "having_condition": "((max_c < 707) and (max_c > 200))",
+          "filesort": {
+            "sort_key": "t1.a, t1.b",
+            "temporary_table": {
+              "table": {
+                "table_name": "t1",
+                "access_type": "ALL",
+                "rows": 20,
+                "filtered": 100,
+                "attached_condition": "(t1.b > 2)"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
 drop view v1,v2,v3;
 drop table t1,t2;

@@ -1339,11 +1339,9 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
       extract_cond_for_grouping_fields(thd, extract_cond, sl);
     if (!extract_fields)
       break;
-    thd->change_item_tree(&extract_cond, 
-			  delete_not_needed_parts(thd, extract_cond));
     Item *extract_cond_cl_field= extract_fields;
     if (sl->next_select())
-      extract_cond_cl_field= extract_cond->build_clone(thd->mem_root);
+      extract_cond_cl_field= extract_fields->build_clone(thd->mem_root);
     field_transformer_where(extract_cond_cl_field, thd, sl);
     extract_cond_cl_field->walk(&Item::cleanup_processor, 0, 0);
     thd->change_item_tree(&sl->join->conds, 
@@ -1355,6 +1353,8 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
       return true;
     thd->lex->current_select= save_curr_select;
   }
+  thd->change_item_tree(&extract_cond, 
+			delete_not_needed_parts(thd, extract_cond));
   if (!extract_cond)
     return false;
   sl= unit->first_select();

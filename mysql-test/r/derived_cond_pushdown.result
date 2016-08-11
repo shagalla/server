@@ -3843,5 +3843,5 @@ EXPLAIN
     }
   }
 }
-drop view v1,v2,v3;
+drop view v1,v2,v3,v4,v5;
 drop table t1,t2;

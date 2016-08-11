@@ -988,6 +988,20 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
 }
 
 
+/**
+  @brief
+    Set flag on condition if it depends only on table or not.
+    
+  @param cond   condition which is going to be look through    
+
+  @details
+     This method recursively looks through condition and setting
+     flags. NO_EXTRACTION_FL - if this condition doesn't depend on table.
+     FULL_EXTRACTION_FL - if it depends only on table and all its parts depend on table.
+     0 - otherwise. During this process exclusive_dependence_processor is. 
+     called.
+*/ 
+
 void TABLE_LIST::check_pushable_cond_for_table(Item *cond)
 {
   table_map tab_map= table->map;
@@ -1022,7 +1036,25 @@ void TABLE_LIST::check_pushable_cond_for_table(Item *cond)
 
 
 /**
-  Extract condition, which depends only on view.
+  @brief
+    Extract condition which depends only on view
+    
+  @param thd    thread handle
+  @param cond   condition which is going to be look through    
+
+  @details
+     This method recursively looks through the condition and clone those
+     parts which depend only on view. If the flag of the condition (or its elements)
+     is NO_EXTRACTION_FL, that means nothing to extract. If some part
+     of the OR-condition has such a flag this OR-condition can't be extracted.
+     In the case if the condition type is multiply equality, cycle goes
+     through equal elements and if some of it depends on view that means that
+     starting condition depends on view.
+     
+
+   @retval
+     condition which depends only on view
+     0 if there is nothing to extract
 */ 
 
 Item* TABLE_LIST::build_pushable_cond_for_table(THD *thd, Item *cond) 
@@ -1118,7 +1150,7 @@ Item* TABLE_LIST::build_pushable_cond_for_table(THD *thd, Item *cond)
     return new_cond;
   }
   else if (cond->get_dep_flags() != NO_EXTRACTION_FL)
-    return cond->build_clone(thd->mem_root);
+    return cond->build_clone(thd, thd->mem_root);
   return 0;
 }
 
@@ -1142,7 +1174,19 @@ void field_transformer_having(Item *cond, THD *thd, st_select_lex *sl)
 
 
 /**
-  Delete conditions which we will push down into view/derived table.
+  @brief
+    Delete those parts of the condition which have flag FULL_EXTRACTION_FL
+    
+  @param thd    thread handle
+  @param cond   condition which is going to be look through    
+
+  @details
+     This method looks through the condition and delete those
+     parts which have flag FULL_EXTRACTION_FL  
+
+   @retval
+     condition without deleted parts
+     0 if there is nothing to delete
 */ 
 
 Item *delete_not_needed_parts(THD *thd, Item *cond)
@@ -1181,6 +1225,18 @@ Item *delete_not_needed_parts(THD *thd, Item *cond)
 }
 
 
+/**
+  @brief
+    Finding fiels which are used in GROUP BY
+    
+  @param thd  thread handle
+
+  @details
+    This method looking through fields and if the field
+    is used in GROUP BY, this field and item, which
+    produce this field are saved.
+*/
+
 void st_select_lex::collect_grouping_fields(THD *thd) 
 {
   List_iterator<Item> li(join->fields_list);
@@ -1199,6 +1255,21 @@ void st_select_lex::collect_grouping_fields(THD *thd)
   }
 }
 
+
+/**
+  @brief
+    Set flag on condition if its fields are used in GROUP BY or not.
+    
+  @param cond   condition which is going to be look through    
+  @param thd    select for which this methos works
+
+  @details
+     This method recursively looks through condition and setting
+     flags. NO_EXTRACTION_FL - if all fields of this condition aren't
+     used in GROUP BY. FULL_EXTRACTION_FL - if all fields are used in GROUP BY.
+     0 - otherwise. During this process conditions_for_where_processor is. 
+     called.
+*/ 
 
 void check_cond_extraction_for_grouping_fields(Item *cond, st_select_lex *sl)
 {
@@ -1242,15 +1313,31 @@ void check_cond_extraction_for_grouping_fields(Item *cond, st_select_lex *sl)
 
 
 /**
-  Extract conditions which depends only on fields.
+  @brief
+    Extract condition which depends only on fields used in GROUP BY of the
+    entire condition
+    
+  @param thd    thread handle
+  @param cond   condition which is going to be look through    
+
+  @details
+     This method recursively looks through the condition and clone those
+     parts which depend only on fields which are used in GROUP BY of the entire
+     condition. If the flag of the condition (or its elements)
+     is NO_EXTRACTION_FL, that means nothing to extract. If some part
+     of the OR-condition has such a flag this OR-condition can't be extracted.    
+
+   @retval
+     condition which depends only on fields used in GROUP BY of the
+     entire condition
+     0 if there is nothing to extract
 */ 
 
 static
-Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
-				       st_select_lex *sl)
+Item *extract_cond_for_grouping_fields(THD *thd, Item *cond)
 {
   if (cond->get_dep_flags() == FULL_EXTRACTION_FL)
-    return cond->build_clone(thd->mem_root);
+    return cond->build_clone(thd, thd->mem_root);
   else if (cond->type() == Item::COND_ITEM)
   {
     bool cond_and= false;
@@ -1274,7 +1361,7 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
 	  return 0;
 	continue;
       }
-      Item *fix= extract_cond_for_grouping_fields(thd, item, sl);
+      Item *fix= extract_cond_for_grouping_fields(thd, item);
       if (!fix && !cond_and)
 	return 0;
       if (!fix) 
@@ -1314,8 +1401,26 @@ void field_transformer_where(Item *cond, THD *thd, st_select_lex *sl)
 
 
 /**
-  Pushing down conditions into HAVING-part of view/derived table.
-*/ 
+  @brief
+    Pushing down conditions, which depends only on view, into view
+    
+  @param thd       thread handle
+  @param cond      condition which is going to be look through
+  @param derived   reference to the derived table.
+
+ @details
+    The method performs the following actions:
+
+    1. Extracting parts of the condition which depends only on view
+    2. Pushing down parts of the condition into the WHERE-clause of the view.
+       This parts must depend only on grouping fields.
+    3. Pushing down the rest parts of the condition which depends only on view
+       into the HAVING-clause of the view.
+
+  @retval
+    true    if an error is reported 
+    false   otherwise
+*/
 
 bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 {
@@ -1336,12 +1441,12 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
     check_cond_extraction_for_grouping_fields(extract_cond, 
 					      sl);
     Item *extract_fields= 
-      extract_cond_for_grouping_fields(thd, extract_cond, sl);
+      extract_cond_for_grouping_fields(thd, extract_cond);
     if (!extract_fields)
       break;
     Item *extract_cond_cl_field= extract_fields;
     if (sl->next_select())
-      extract_cond_cl_field= extract_fields->build_clone(thd->mem_root);
+      extract_cond_cl_field= extract_fields->build_clone(thd, thd->mem_root);
     field_transformer_where(extract_cond_cl_field, thd, sl);
     extract_cond_cl_field->walk(&Item::cleanup_processor, 0, 0);
     thd->change_item_tree(&sl->join->conds, 
@@ -1363,7 +1468,7 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
     Item *extract_cond_cl= extract_cond;
     if (sl->next_select())
       thd->change_item_tree(&extract_cond_cl,
-			    extract_cond->build_clone(thd->mem_root));
+			    extract_cond->build_clone(thd, thd->mem_root));
     field_transformer_having(extract_cond_cl, thd, sl);
     extract_cond_cl->walk(&Item::cleanup_processor, 0, 0);
     thd->change_item_tree(&sl->join->having,

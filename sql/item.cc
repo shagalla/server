@@ -2167,9 +2167,9 @@ bool Item_func_or_sum::agg_item_set_converter(const DTCollation &coll,
   Recursive procedure.
 */
 
-Item* Item_func_or_sum::build_clone(MEM_ROOT *mem_root)
+Item* Item_func_or_sum::build_clone(THD *thd, MEM_ROOT *mem_root)
 {
-  Item_func_or_sum *copy= (Item_func_or_sum *) get_copy(mem_root);
+  Item_func_or_sum *copy= (Item_func_or_sum *) get_copy(thd, mem_root);
   if (!copy)
     return 0;
   Item **arg_cop= copy->args;
@@ -2182,7 +2182,7 @@ Item* Item_func_or_sum::build_clone(MEM_ROOT *mem_root)
     copy->args= copy->tmp_arg;
   for (uint i= 0; i < arg_count; i++)
   {
-    Item *arg_clone= args[i]->build_clone(mem_root);
+    Item *arg_clone= args[i]->build_clone(thd, mem_root);
     if (!arg_clone)
       return 0;
     copy->args[i]= arg_clone;
@@ -6635,7 +6635,7 @@ Item *Item_field::derived_field_transformer_for_where(THD *thd, uchar *arg)
     while ((field=li++))
     {
       if (((Item_field*) this)->field == field->tmp_field)
-	return field->producing_item->build_clone(thd->mem_root);
+	return field->producing_item->build_clone(thd, thd->mem_root);
     }
   }
   else if (((Item_field*)this)->item_equal)
@@ -6653,7 +6653,7 @@ Item *Item_field::derived_field_transformer_for_where(THD *thd, uchar *arg)
         {
 	  if (field_item->field == field->tmp_field)
 	  {
-	    return field->producing_item->build_clone(thd->mem_root);
+	    return field->producing_item->build_clone(thd, thd->mem_root);
 	  }
         }  
       }

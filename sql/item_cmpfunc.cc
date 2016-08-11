@@ -4847,17 +4847,17 @@ void Item_cond::neg_arguments(THD *thd)
 }
 
 
-Item *Item_cond::build_clone(MEM_ROOT *mem_root)
+Item *Item_cond::build_clone(THD *thd, MEM_ROOT *mem_root)
 {
   List_iterator_fast<Item> li(list);
   Item *item;
-  Item_cond *copy= (Item_cond *) get_copy(mem_root);
+  Item_cond *copy= (Item_cond *) get_copy(thd, mem_root);
   if (!copy)
     return 0;
   copy->list.empty();
   while ((item= li++))
   {
-    Item *arg_clone= item->build_clone(mem_root);
+    Item *arg_clone= item->build_clone(thd, mem_root);
     if (!arg_clone)
       return 0;
     if (copy->list.push_back(arg_clone, mem_root))

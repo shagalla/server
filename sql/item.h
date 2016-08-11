@@ -1109,7 +1109,7 @@ public:
   virtual bool basic_const_item() const { return 0; }
   /* cloning of constant items (0 if it is not const) */
   virtual Item *clone_item(THD *thd) { return 0; }
-  virtual Item* build_clone(MEM_ROOT *mem_root) { return get_copy(mem_root); }
+  virtual Item* build_clone(THD *thd, MEM_ROOT *mem_root) { return get_copy(thd, mem_root); }
   virtual cond_result eq_cmp_result() const { return COND_OK; }
   inline uint float_length(uint decimals_par) const
   { return decimals != NOT_FIXED_DEC ? (DBL_DIG+2+decimals_par) : DBL_DIG+8;}
@@ -3970,7 +3970,7 @@ public:
   virtual void fix_length_and_dec()= 0;
   bool const_item() const { return const_item_cache; }
   table_map used_tables() const { return used_tables_cache; }
-  Item* build_clone(MEM_ROOT *mem_root);
+  Item* build_clone(THD *thd, MEM_ROOT *mem_root);
 };
 
 

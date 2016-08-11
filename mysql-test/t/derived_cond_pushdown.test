@@ -399,5 +399,5 @@ explain format=json
   select * from v5,t2 where 
     ((v5.a=6) or (v5.a=8)) and (v5.c>200) and (v5.a=t2.a);
   
-drop view v1,v2,v3;
+drop view v1,v2,v3,v4,v5;
 drop table t1,t2;      

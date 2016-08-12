@@ -9879,14 +9879,6 @@ bool Item_field::conditions_for_where_processor(uchar *arg)
 }
 
 
-Item *Item::get_copy(MEM_ROOT *mem_root)
-{
-  dbug_print_item(this); 
-  DBUG_ASSERT(0);  
-  return 0;
-}
-
-
 Item *Item::get_copy(THD *thd, MEM_ROOT *mem_root)
 {
   dbug_print_item(this); 

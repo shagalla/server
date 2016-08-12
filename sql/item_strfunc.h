@@ -105,8 +105,6 @@ public:
   String *val_str_ascii(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "md5"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_md5(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_md5>(thd, mem_root, this); }
 };
@@ -119,8 +117,6 @@ public:
   String *val_str_ascii(String *);    
   void fix_length_and_dec();      
   const char *func_name() const { return "sha"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_sha(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_sha>(thd, mem_root, this); }
 };
@@ -132,8 +128,6 @@ public:
   String *val_str_ascii(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "sha2"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_sha2(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_sha2>(thd, mem_root, this); }
 };
@@ -146,8 +140,6 @@ public:
   String *val_str_ascii(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "to_base64"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_to_base64(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_to_base64>(thd, mem_root, this); }
 };
@@ -160,8 +152,6 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "from_base64"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_from_base64(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_from_base64>(thd, mem_root, this); }
 };
@@ -187,8 +177,6 @@ public:
     Item_aes_crypt(thd, a, b) {}
   void fix_length_and_dec();
   const char *func_name() const { return "aes_encrypt"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_aes_encrypt(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_aes_encrypt>(thd, mem_root, this); }
 };
@@ -200,8 +188,6 @@ public:
     Item_aes_crypt(thd, a, b) {}
   void fix_length_and_dec();
   const char *func_name() const { return "aes_decrypt"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_aes_decrypt(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_aes_decrypt>(thd, mem_root, this); }
 };
@@ -216,8 +202,6 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "concat"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_concat(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_concat>(thd, mem_root, this); }
 };
@@ -236,8 +220,6 @@ public:
     maybe_null= 1;
   }
   const char *func_name() const { return "decode_histogram"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_decode_histogram(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_decode_histogram>(thd, mem_root, this); }
 };
@@ -251,8 +233,6 @@ public:
   void fix_length_and_dec();
   const char *func_name() const { return "concat_ws"; }
   table_map not_null_tables() const { return 0; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_concat_ws(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_concat_ws>(thd, mem_root, this); }
 };
@@ -265,8 +245,6 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "reverse"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_reverse(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_reverse>(thd, mem_root, this); }
 };
@@ -304,8 +282,6 @@ public:
   String *val_str(String *str);
   void fix_length_and_dec();
   const char *func_name() const { return "regexp_replace"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_regexp_replace(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_regexp_replace>(thd, mem_root, this); }
 };
@@ -328,8 +304,6 @@ public:
   String *val_str(String *str);
   void fix_length_and_dec();
   const char *func_name() const { return "regexp_substr"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_regexp_substr(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_regexp_substr>(thd, mem_root, this); }
 };
@@ -366,8 +340,6 @@ public:
   Item_func_lcase(THD *thd, Item *item): Item_str_conv(thd, item) {}
   const char *func_name() const { return "lcase"; }
   void fix_length_and_dec();
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_lcase(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_lcase>(thd, mem_root, this); }
 };
@@ -378,8 +350,6 @@ public:
   Item_func_ucase(THD *thd, Item *item): Item_str_conv(thd, item) {}
   const char *func_name() const { return "ucase"; }
   void fix_length_and_dec();
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_ucase(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_ucase>(thd, mem_root, this); }
 };
@@ -428,8 +398,6 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "substring_index"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_substr_index(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_substr_index>(thd, mem_root, this); }
 
@@ -475,8 +443,6 @@ public:
   String *val_str(String *);
   const char *func_name() const { return "ltrim"; }
   const char *mode_name() const { return "leading"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_ltrim(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_ltrim>(thd, mem_root, this); }
 };
@@ -490,8 +456,6 @@ public:
   String *val_str(String *);
   const char *func_name() const { return "rtrim"; }
   const char *mode_name() const { return "trailing"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_rtrim(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_rtrim>(thd, mem_root, this); }
 };
@@ -549,8 +513,6 @@ public:
     max_length = args[0]->max_length + 9;
   }
   const char *func_name() const { return "des_encrypt"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_des_encrypt(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_des_encrypt>(thd, mem_root, this); }
 };
@@ -571,8 +533,6 @@ public:
       max_length-= 9U;
   }
   const char *func_name() const { return "des_decrypt"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_des_decrypt(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_des_decrypt>(thd, mem_root, this); }
 };
@@ -602,8 +562,6 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_encrypt(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_encrypt>(thd, mem_root, this); }
 };
@@ -624,8 +582,6 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "encode"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_encode(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_encode>(thd, mem_root, this); }
 protected:
@@ -641,8 +597,6 @@ class Item_func_decode :public Item_func_encode
 public:
   Item_func_decode(THD *thd, Item *a, Item *seed_arg): Item_func_encode(thd, a, seed_arg) {}
   const char *func_name() const { return "decode"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_decode(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_decode>(thd, mem_root, this); }
 protected:
@@ -761,8 +715,6 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "soundex"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_soundex(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_soundex>(thd, mem_root, this); }
 };
@@ -777,8 +729,6 @@ public:
   String *val_str(String *str);
   void fix_length_and_dec();
   const char *func_name() const { return "elt"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_elt(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_elt>(thd, mem_root, this); }
 };
@@ -793,8 +743,6 @@ public:
   String *val_str(String *str);
   void fix_length_and_dec();
   const char *func_name() const { return "make_set"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_make_set(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_make_set>(thd, mem_root, this); }
 };
@@ -815,8 +763,6 @@ public:
   void fix_length_and_dec();
   const char *func_name() const { return "format"; }
   virtual void print(String *str, enum_query_type query_type);
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_format(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_format>(thd, mem_root, this); }
 };
@@ -858,8 +804,6 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "space"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_space(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_space>(thd, mem_root, this); }
 };
@@ -874,8 +818,6 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "binlog_gtid_pos"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_binlog_gtid_pos(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_binlog_gtid_pos>(thd, mem_root, this); }
 };
@@ -890,8 +832,6 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "rpad"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_rpad(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_rpad>(thd, mem_root, this); }
 };
@@ -906,8 +846,6 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "lpad"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_lpad(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_lpad>(thd, mem_root, this); }
 };
@@ -926,8 +864,6 @@ public:
     max_length=64;
     maybe_null= 1;
   }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_conv(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_conv>(thd, mem_root, this); }
 };
@@ -947,8 +883,6 @@ public:
     decimals=0;
     fix_char_length(args[0]->max_length * 2);
   }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_hex(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_hex>(thd, mem_root, this); }
 };
@@ -970,8 +904,6 @@ public:
     decimals=0;
     max_length=(1+args[0]->max_length)/2;
   }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_unhex(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_unhex>(thd, mem_root, this); }
 };
@@ -1004,8 +936,6 @@ public:
   Item_func_like_range_min(THD *thd, Item *a, Item *b):
     Item_func_like_range(thd, a, b, true) { }
   const char *func_name() const { return "like_range_min"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_like_range_min(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_like_range_min>(thd, mem_root, this); }
 };
@@ -1017,8 +947,6 @@ public:
   Item_func_like_range_max(THD *thd, Item *a, Item *b):
     Item_func_like_range(thd, a, b, false) { }
   const char *func_name() const { return "like_range_max"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_like_range_max(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_like_range_max>(thd, mem_root, this); }
 };
@@ -1045,8 +973,6 @@ public:
   }
   virtual void print(String *str, enum_query_type query_type);
   const char *func_name() const { return "cast_as_binary"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_binary(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_binary>(thd, mem_root, this); }
 };
@@ -1069,8 +995,6 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_load_file(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_load_file>(thd, mem_root, this); }
 };
@@ -1088,8 +1012,6 @@ class Item_func_export_set: public Item_str_func
   String  *val_str(String *str);
   void fix_length_and_dec();
   const char *func_name() const { return "export_set"; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_export_set(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_export_set>(thd, mem_root, this); }
 };
@@ -1109,8 +1031,6 @@ public:
                                   2 * collation.collation->mbmaxlen;
     max_length= (uint32) MY_MIN(max_result_length, MAX_BLOB_WIDTH);
   }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_quote(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_quote>(thd, mem_root, this); }
 };
@@ -1195,8 +1115,6 @@ public:
   void fix_length_and_dec();
   const char *func_name() const { return "convert"; }
   virtual void print(String *str, enum_query_type query_type);
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_conv_charset(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_conv_charset>(thd, mem_root, this); }
 };
@@ -1297,8 +1215,6 @@ public:
   const char *func_name() const { return "crc32"; }
   void fix_length_and_dec() { max_length=10; }
   longlong val_int();
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_crc32(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_crc32>(thd, mem_root, this); }
 };
@@ -1311,8 +1227,6 @@ public:
   const char *func_name() const{return "uncompressed_length";}
   void fix_length_and_dec() { max_length=10; maybe_null= true; }
   longlong val_int();
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_uncompressed_length(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_uncompressed_length>(thd, mem_root, this); }
 };
@@ -1331,8 +1245,6 @@ public:
   void fix_length_and_dec(){max_length= (args[0]->max_length*120)/100+12;}
   const char *func_name() const{return "compress";}
   String *val_str(String *) ZLIB_DEPENDED_FUNCTION
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_compress(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_compress>(thd, mem_root, this); }
 };
@@ -1345,8 +1257,6 @@ public:
   void fix_length_and_dec(){ maybe_null= 1; max_length= MAX_BLOB_WIDTH; }
   const char *func_name() const{return "uncompress";}
   String *val_str(String *) ZLIB_DEPENDED_FUNCTION
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_uncompress(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_uncompress>(thd, mem_root, this); }
 };
@@ -1368,8 +1278,6 @@ public:
   {
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_uuid(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_uuid>(thd, mem_root, this); }
 };
@@ -1393,8 +1301,6 @@ public:
   String *val_str(String *);
   virtual void print(String *str, enum_query_type query_type);
   virtual enum Functype functype() const   { return DYNCOL_FUNC; }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_dyncol_create(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_dyncol_create>(thd, mem_root, this); }
 };
@@ -1409,8 +1315,6 @@ public:
   const char *func_name() const{ return "column_add"; }
   String *val_str(String *);
   virtual void print(String *str, enum_query_type query_type);
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_dyncol_add(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_dyncol_add>(thd, mem_root, this); }
 };
@@ -1428,8 +1332,6 @@ public:
     collation.set(&my_charset_bin);
     decimals= 0;
   }
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_dyncol_json(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_dyncol_json>(thd, mem_root, this); }
 };
@@ -1456,8 +1358,6 @@ public:
   bool get_dyn_value(THD *thd, DYNAMIC_COLUMN_VALUE *val, String *tmp);
   bool get_date(MYSQL_TIME *ltime, ulonglong fuzzydate);
   void print(String *str, enum_query_type query_type);
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_dyncol_get(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_dyncol_get>(thd, mem_root, this); }
 };
@@ -1470,8 +1370,6 @@ public:
   void fix_length_and_dec() { maybe_null= 1; max_length= MAX_BLOB_WIDTH; };
   const char *func_name() const{ return "column_list"; }
   String *val_str(String *);
-  Item *get_copy(MEM_ROOT *mem_root)
-  { return new (mem_root) Item_func_dyncol_list(*this); }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_dyncol_list>(thd, mem_root, this); }
 };

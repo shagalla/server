@@ -244,6 +244,8 @@ public:
   Item_func_istrue(THD *thd, Item *a): Item_func_truth(thd, a, true, true) {}
   ~Item_func_istrue() {}
   virtual const char* func_name() const { return "istrue"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_istrue>(thd, mem_root, this); }
 };
 
 
@@ -258,6 +260,8 @@ public:
     Item_func_truth(thd, a, true, false) {}
   ~Item_func_isnottrue() {}
   virtual const char* func_name() const { return "isnottrue"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_isnottrue>(thd, mem_root, this); }
 };
 
 
@@ -271,6 +275,8 @@ public:
   Item_func_isfalse(THD *thd, Item *a): Item_func_truth(thd, a, false, true) {}
   ~Item_func_isfalse() {}
   virtual const char* func_name() const { return "isfalse"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_isfalse>(thd, mem_root, this); }
 };
 
 
@@ -285,6 +291,8 @@ public:
     Item_func_truth(thd, a, false, false) {}
   ~Item_func_isnotfalse() {}
   virtual const char* func_name() const { return "isnotfalse"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_isnotfalse>(thd, mem_root, this); }
 };
 
 
@@ -914,6 +922,8 @@ public:
     str->append(func_name());
     print_args(str, 0, query_type);
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_interval>(thd, mem_root, this); }
 };
 
 
@@ -936,6 +946,8 @@ public:
   }
   const char *func_name() const { return "coalesce"; }
   table_map not_null_tables() const { return 0; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_coalesce>(thd, mem_root, this); }
 };
 
 
@@ -1010,6 +1022,8 @@ public:
   const char *func_name() const { return "if"; }
   bool eval_not_null_tables(uchar *opt_arg);
   void fix_after_pullout(st_select_lex *new_parent, Item **ref);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_if>(thd, mem_root, this); }
 private:
   void cache_type_info(Item *source);
 };
@@ -1518,6 +1532,8 @@ public:
   CHARSET_INFO *compare_collation() const { return cmp_collation.collation; }
   void cleanup();
   Item* propagate_equal_fields(THD *thd, const Context &ctx, COND_EQUAL *cond);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_case>(thd, mem_root, this); }
 };
 
 /*
@@ -2287,6 +2303,7 @@ public:
 
   void set_context_field(Item_field *ctx_field) { context_field= ctx_field; }
   void set_link_equal_fields(bool flag) { link_equal_fields= flag; }
+  Item* get_copy(THD *thd, MEM_ROOT *mem_root) { return 0; }
   friend class Item_equal_fields_iterator;
   bool count_sargable_conds(uchar *arg);
   friend class Item_equal_iterator<List_iterator_fast,Item>;
@@ -2479,6 +2496,8 @@ public:
     Item_bool_func(thd, str, num) {}
   longlong val_int();
   const char *func_name() const { return "column_exists"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_dyncol_exists>(thd, mem_root, this); }
 };
 
 inline bool is_cond_or(Item *item)

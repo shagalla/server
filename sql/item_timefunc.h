@@ -188,6 +188,8 @@ public:
   {
     return !has_date_args();
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_month>(thd, mem_root, this); }
 };
 
 
@@ -251,6 +253,8 @@ public:
   {
     return !has_time_args();
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_hour>(thd, mem_root, this); }
 };
 
 
@@ -272,6 +276,8 @@ public:
   {
     return !has_time_args();
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_minute>(thd, mem_root, this); }
 };
 
 
@@ -293,6 +299,8 @@ public:
   {
     return !has_date_args();
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_quarter>(thd, mem_root, this); }
 };
 
 
@@ -314,6 +322,8 @@ public:
   {
     return !has_time_args();
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_second>(thd, mem_root, this); }
 };
 
 
@@ -376,6 +386,8 @@ public:
   {
     return !has_date_args();
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_year>(thd, mem_root, this); }
 };
 
 
@@ -649,6 +661,8 @@ public:
   Item_func_curtime_local(THD *thd, uint dec): Item_func_curtime(thd, dec) {}
   const char *func_name() const { return "curtime"; }
   virtual void store_now_in_TIME(MYSQL_TIME *now_time);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_curtime_local>(thd, mem_root, this); }
 };
 
 
@@ -658,6 +672,8 @@ public:
   Item_func_curtime_utc(THD *thd, uint dec): Item_func_curtime(thd, dec) {}
   const char *func_name() const { return "utc_time"; }
   virtual void store_now_in_TIME(MYSQL_TIME *now_time);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_curtime_utc>(thd, mem_root, this); }
 };
 
 
@@ -684,6 +700,8 @@ public:
   Item_func_curdate_local(THD *thd): Item_func_curdate(thd) {}
   const char *func_name() const { return "curdate"; }
   void store_now_in_TIME(MYSQL_TIME *now_time);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_curdate_local>(thd, mem_root, this); }
 };
 
 
@@ -693,6 +711,8 @@ public:
   Item_func_curdate_utc(THD *thd): Item_func_curdate(thd) {}
   const char *func_name() const { return "utc_date"; }
   void store_now_in_TIME(MYSQL_TIME *now_time);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_curdate_utc>(thd, mem_root, this); }
 };
 
 
@@ -727,6 +747,8 @@ public:
   const char *func_name() const { return "now"; }
   virtual void store_now_in_TIME(MYSQL_TIME *now_time);
   virtual enum Functype functype() const { return NOW_FUNC; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_now_local>(thd, mem_root, this); }
 };
 
 
@@ -736,6 +758,8 @@ public:
   Item_func_now_utc(THD *thd, uint dec): Item_func_now(thd, dec) {}
   const char *func_name() const { return "utc_timestamp"; }
   virtual void store_now_in_TIME(MYSQL_TIME *now_time);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_now_utc>(thd, mem_root, this); }
 };
 
 
@@ -757,6 +781,8 @@ public:
     maybe_null= 0;
     used_tables_cache|= RAND_TABLE_BIT;
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_sysdate_local>(thd, mem_root, this); }
 };
 
 
@@ -876,6 +902,8 @@ public:
   bool get_date(MYSQL_TIME *res, ulonglong fuzzy_date);
   bool eq(const Item *item, bool binary_cmp) const;
   void print(String *str, enum_query_type query_type);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_date_add_interval>(thd, mem_root, this); }
 };
 
 
@@ -930,6 +958,8 @@ class Item_extract :public Item_int_func
     }
     return true;
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_extract>(thd, mem_root, this); }
 };
 
 
@@ -1094,6 +1124,8 @@ public:
   {
     return !has_time_args();
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_microsecond>(thd, mem_root, this); }
 };
 
 
@@ -1111,6 +1143,8 @@ public:
     maybe_null=1;
   }
   virtual void print(String *str, enum_query_type query_type);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_timestamp_diff>(thd, mem_root, this); }
 };
 
 
@@ -1135,6 +1169,8 @@ public:
     fix_length_and_charset(17, default_charset());
   }
   virtual void print(String *str, enum_query_type query_type);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_get_format>(thd, mem_root, this); }
 };
 
 

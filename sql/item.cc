@@ -2163,17 +2163,26 @@ bool Item_func_or_sum::agg_item_set_converter(const DTCollation &coll,
 
 
 /**
-  Building function clone.
-  Recursive procedure.
-*/
+  @brief
+    Building clone for Item_func_or_sum
+    
+  @param thd        thread handle
+  @param mem_root   part of the memory for the clone   
+
+  @details
+    This method gets copy of the current item and also 
+    build clones for its referencies. For the referencies 
+    build_copy is called again.
+      
+   @retval
+     clone of the item
+     0 if an error occured
+*/ 
 
 Item* Item_func_or_sum::build_clone(THD *thd, MEM_ROOT *mem_root)
 {
   Item_func_or_sum *copy= (Item_func_or_sum *) get_copy(thd, mem_root);
   if (!copy)
-    return 0;
-  Item **arg_cop= copy->args;
-  if (!arg_cop)
     return 0;
   if (arg_count > 2)
     copy->args= 
@@ -2187,6 +2196,35 @@ Item* Item_func_or_sum::build_clone(THD *thd, MEM_ROOT *mem_root)
       return 0;
     copy->args[i]= arg_clone;
   }
+  return copy;
+}
+
+
+/**
+  @brief
+    Building clone for Item_ref
+    
+  @param thd        thread handle
+  @param mem_root   part of the memory for the clone   
+
+  @details
+    This method gets copy of the current item and also 
+    builds clone for its reference. 
+      
+   @retval
+     clone of the item
+     0 if an error occured
+*/ 
+
+Item* Item_ref::build_clone(THD *thd, MEM_ROOT *mem_root)
+{
+  Item_ref *copy= (Item_ref *) get_copy(thd, mem_root);
+  if (!copy)
+    return 0;
+  Item *item_clone= (* ref)->build_clone(thd, mem_root);
+  if (!item_clone)
+    return 0;
+  *copy->ref= item_clone;
   return copy;
 }
 
@@ -9835,6 +9873,19 @@ const char *dbug_print_item(Item *item)
 #endif /*DBUG_OFF*/
 
 
+/**
+  @brief
+    This method looks if current field depends only on map or if there
+    are any equal fields and some of this fields depend on map.
+    
+  @param
+    table map   
+  
+  @retval
+    true    if there is no dependence on map 
+    false   otherwise 
+*/ 
+
 bool Item_field::exclusive_dependence_processor(uchar *map)
 {
   table_map view_map= *((table_map *) map);
@@ -9842,6 +9893,27 @@ bool Item_field::exclusive_dependence_processor(uchar *map)
          (item_equal && item_equal->used_tables() & view_map))); 
 }
 
+
+/**
+  @brief
+    This method looks if current field contains in GROUP BY of 
+    the SELECT or not
+    
+  @param 
+    SELECT from which table map and fields, which contain in GROUP BY
+    of this SELECT, are taken   
+              
+  @details
+    This method looks through the fields which contain in GROUP BY
+    of the arg and if the current field is equal to one of this fields
+    false returns. Else if there are any equal with the current field fields 
+    it is looked if any of this equal fields are the same as the fields
+    used in GROUP BY. All of this fields must depend only on table map.
+  
+  @retval
+    true    if current field doesn't contain in GROUP BY of the SELECT
+    false   otherwise 
+*/ 
 
 bool Item_field::conditions_for_where_processor(uchar *arg)
 {
@@ -9879,12 +9951,12 @@ bool Item_field::conditions_for_where_processor(uchar *arg)
 }
 
 
-Item *Item::get_copy(THD *thd, MEM_ROOT *mem_root)
+/*Item *Item::get_copy(THD *thd, MEM_ROOT *mem_root)
 {
   dbug_print_item(this); 
   DBUG_ASSERT(0);  
   return 0;
-}
+}*/
 
 
 void Item::register_in(THD *thd)

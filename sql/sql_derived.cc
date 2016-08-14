@@ -995,7 +995,7 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
   @param cond   condition which is going to be look through    
 
   @details
-     This method recursively looks through condition and setting
+     This method recursively looks through the condition and set
      flags. NO_EXTRACTION_FL - if this condition doesn't depend on table.
      FULL_EXTRACTION_FL - if it depends only on table and all its parts depend on table.
      0 - otherwise. During this process exclusive_dependence_processor is. 
@@ -1155,6 +1155,20 @@ Item* TABLE_LIST::build_pushable_cond_for_table(THD *thd, Item *cond)
 }
 
 
+/**
+  @brief
+    Transforming fields as it will be able to extract them 
+    into HAVING part of the condition
+  
+  @param cond   condition which is going to be look through    
+  @param thd    thread handle
+  @param sl     context where cond is used  
+
+  @details
+    This method looks through the condition and call 
+    derived_field_transformer_for_having
+*/
+
 void field_transformer_having(Item *cond, THD *thd, st_select_lex *sl)
 {
   if (cond->type() == Item::COND_ITEM)
@@ -1232,9 +1246,9 @@ Item *delete_not_needed_parts(THD *thd, Item *cond)
   @param thd  thread handle
 
   @details
-    This method looking through fields and if the field
+    This method looks through the fields and if the field
     is used in GROUP BY, this field and item, which
-    produce this field are saved.
+    produces this field, are saved.
 */
 
 void st_select_lex::collect_grouping_fields(THD *thd) 
@@ -1264,7 +1278,7 @@ void st_select_lex::collect_grouping_fields(THD *thd)
   @param thd    select for which this methos works
 
   @details
-     This method recursively looks through condition and setting
+     This method recursively looks through the condition and set
      flags. NO_EXTRACTION_FL - if all fields of this condition aren't
      used in GROUP BY. FULL_EXTRACTION_FL - if all fields are used in GROUP BY.
      0 - otherwise. During this process conditions_for_where_processor is. 
@@ -1381,6 +1395,19 @@ Item *extract_cond_for_grouping_fields(THD *thd, Item *cond)
   return 0;
 }
 
+/**
+  @brief
+    Transforming fields as it will be able to extract them 
+    into WHERE part of the condition
+  
+  @param cond   condition which is going to be look through    
+  @param thd    thread handle
+  @param sl     context where cond is used  
+
+  @details
+    This method looks through the condition and call 
+    derived_field_transformer_for_where
+*/
 
 void field_transformer_where(Item *cond, THD *thd, st_select_lex *sl)
 {

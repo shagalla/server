@@ -1122,6 +1122,7 @@ int JOIN::optimize()
 int
 JOIN::optimize_inner()
 {
+  if (conds) { Item *it_clone= conds->build_clone(thd,thd->mem_root); }
   ulonglong select_opts_for_readinfo;
   uint no_jbuf_after;
   JOIN_TAB *tab;
@@ -1250,7 +1251,7 @@ JOIN::optimize_inner()
   
   if (setup_jtbm_semi_joins(this, join_list, &conds))
     DBUG_RETURN(1);
-
+  
   conds= optimize_cond(this, conds, join_list, FALSE,
                        &cond_value, &cond_equal, OPT_LINK_EQUAL_FIELDS);
   

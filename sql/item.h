@@ -1480,10 +1480,10 @@ public:
   { return 0; }
   virtual bool exclusive_dependence_processor(uchar *map) { return 0; }
   virtual bool conditions_for_where_processor(uchar *arg) { return 0; }
-  virtual Item *get_copy(THD *thd, MEM_ROOT *mem_root);
+  //virtual Item *get_copy(THD *thd, MEM_ROOT *mem_root);
   
 
-  //virtual Item *get_copy(MEM_ROOT *mem_root)=0;
+  virtual Item *get_copy(THD *thd, MEM_ROOT *mem_root)=0;
 
   /* To call bool function for all arguments */
   struct bool_func_call_args
@@ -2150,6 +2150,8 @@ public:
   { return this; }
 
   bool append_for_log(THD *thd, String *str);
+  
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root) { return 0; }
 };
 
 /*****************************************************************************
@@ -2196,6 +2198,7 @@ public:
     purposes.
   */
   virtual void print(String *str, enum_query_type query_type);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root) { return 0; }
 
 private:
   uint m_case_expr_id;
@@ -2412,6 +2415,8 @@ public:
   CHARSET_INFO *charset_for_protocol(void) const
   { return field->charset_for_protocol(); }
   enum_field_types field_type() const { return MYSQL_TYPE_DOUBLE; }
+  Item* get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_ident_for_show>(thd, mem_root, this); }
 };
 
 
@@ -2821,6 +2826,8 @@ public:
   { return this; }
 
   bool append_for_log(THD *thd, String *str);
+  
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root) { return 0; }
 
 private:
   virtual bool set_value(THD *thd, sp_rcontext *ctx, Item **it);
@@ -3419,6 +3426,8 @@ public:
   }
   enum Item_result cast_to_int_type() const { return INT_RESULT; }
   void print(String *str, enum_query_type query_type);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_hex_hybrid>(thd, mem_root, this); }
 };
 
 
@@ -3459,6 +3468,8 @@ public:
   }
   enum Item_result cast_to_int_type() const { return STRING_RESULT; }
   void print(String *str, enum_query_type query_type);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_hex_string>(thd, mem_root, this); }
 };
 
 
@@ -4123,6 +4134,8 @@ public:
     DBUG_ASSERT(ref);
     return (*ref)->is_outer_field();
   }
+  
+  Item* build_clone(THD *thd, MEM_ROOT *mem_root);
 
   /**
     Checks if the item tree that ref points to contains a subquery.
@@ -5510,6 +5523,7 @@ public:
   static uint32 display_length(Item *item);
   static enum_field_types get_real_type(Item *);
   Field::geometry_type get_geometry_type() const { return geometry_type; };
+  Item* get_copy(THD *thd, MEM_ROOT *mem_root) { return 0; }
 };
 
 

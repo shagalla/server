@@ -259,6 +259,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "replace"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_replace>(thd, mem_root, this); }
 };
 
 
@@ -319,6 +321,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "insert"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_insert>(thd, mem_root, this); }
 };
 
 
@@ -363,6 +367,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "left"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_left>(thd, mem_root, this); }
 };
 
 
@@ -374,6 +380,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "right"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_right>(thd, mem_root, this); }
 };
 
 
@@ -386,6 +394,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "substr"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_substr>(thd, mem_root, this); }
 };
 
 
@@ -432,6 +442,8 @@ public:
   const char *func_name() const { return "trim"; }
   virtual void print(String *str, enum_query_type query_type);
   virtual const char *mode_name() const { return "both"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_trim>(thd, mem_root, this); }
 };
 
 
@@ -495,6 +507,8 @@ public:
                                           "password" : "old_password"); }
   static char *alloc(THD *thd, const char *password, size_t pass_len,
                      enum PW_Alg al);
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_password>(thd, mem_root, this); }
 };
 
 
@@ -639,6 +653,8 @@ public:
   }
   const char *func_name() const { return "database"; }
   const char *fully_qualified_func_name() const { return "database()"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_database>(thd, mem_root, this); }
 };
 
 
@@ -669,6 +685,8 @@ public:
   {
     return save_str_value_in_field(field, &str_value);
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_user>(thd, mem_root, this); }
 };
 
 
@@ -704,6 +722,8 @@ public:
     DBUG_ASSERT(fixed == 1);
     return (null_value ? 0 : &str_value);
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_current_role>(thd, mem_root, this); }
 };
 
 
@@ -782,6 +802,8 @@ public:
     max_length= arg_count * 4;
   }
   const char *func_name() const { return "char"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_char>(thd, mem_root, this); }
 };
 
 
@@ -794,6 +816,8 @@ public:
   String *val_str(String *);
   void fix_length_and_dec();
   const char *func_name() const { return "repeat"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_repeat>(thd, mem_root, this); }
 };
 
 
@@ -1135,6 +1159,8 @@ public:
     /* this function is transparent for view updating */
     return args[0]->field_for_view_update();
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_set_collation>(thd, mem_root, this); }
 };
 
 
@@ -1162,6 +1188,8 @@ public:
     :Item_func_expr_str_metadata(thd, a) { }
   String *val_str(String *);
   const char *func_name() const { return "charset"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_charset>(thd, mem_root, this); }
 };
 
 
@@ -1172,6 +1200,8 @@ public:
     :Item_func_expr_str_metadata(thd, a) {}
   String *val_str(String *);
   const char *func_name() const { return "collation"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_collation>(thd, mem_root, this); }
 };
 
 
@@ -1204,6 +1234,8 @@ public:
   }
   Item* propagate_equal_fields(THD *thd, const Context &ctx, COND_EQUAL *cond)
   { return this; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_weight_string>(thd, mem_root, this); }
 };
 
 class Item_func_crc32 :public Item_int_func

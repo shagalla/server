@@ -1947,6 +1947,8 @@ public:
   table_map used_tables() const
   { return const_item() ? 0 : RAND_TABLE_BIT; }
   bool eq(const Item *item, bool binary_cmp) const;
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_get_user_var>(thd, mem_root, this); }
 private:
   bool set_value(THD *thd, sp_rcontext *ctx, Item **it);
 
@@ -1986,6 +1988,8 @@ public:
   void set_null_value(CHARSET_INFO* cs);
   void set_value(const char *str, uint length, CHARSET_INFO* cs);
   enum_field_types field_type() const { return MYSQL_TYPE_DOUBLE; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_user_var_as_out_param>(thd, mem_root, this); }
 };
 
 
@@ -2092,6 +2096,8 @@ public:
     /* TODO: consider adding in support for the MATCH-based virtual columns */
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_match>(thd, mem_root, this); }
 private:
   /**
      Check whether storage engine for given table, 
@@ -2136,6 +2142,8 @@ public:
   Item_func_bit_xor(THD *thd, Item *a, Item *b): Item_func_bit(thd, a, b) {}
   longlong val_int();
   const char *func_name() const { return "^"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_bit_xor>(thd, mem_root, this); }
 };
 
 class Item_func_is_free_lock :public Item_int_func
@@ -2219,6 +2227,8 @@ public:
 
     return trace_unsupported_by_check_vcol_func_processor(func_name());
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_row_count>(thd, mem_root, this); }
 };
 
 
@@ -2411,6 +2421,8 @@ public:
     Item_func::update_used_tables();
     maybe_null= last_value->maybe_null;
   }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_last_value>(thd, mem_root, this); }
 };
 
 

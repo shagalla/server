@@ -726,6 +726,12 @@ public:
 typedef class st_select_lex_unit SELECT_LEX_UNIT;
 typedef Bounds_checked_array<Item*> Ref_ptr_array;
 
+
+/*
+  Structure which consists of the field and the item which 
+  produces this field.
+*/
+
 class Grouping_tmp_field :public Sql_alloc
 {
 public:

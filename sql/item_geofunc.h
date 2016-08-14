@@ -205,6 +205,8 @@ public:
   const char *func_name() const { return "point"; }
   String *val_str(String *);
   Field::geometry_type get_geometry_type() const;
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_point>(thd, mem_root, this); }
 };
 
 class Item_func_spatial_decomp: public Item_geometry_func
@@ -290,6 +292,8 @@ public:
   }
  
   const char *func_name() const { return "st_multipoint"; }
+  Item *get_copy(THD *thd, MEM_ROOT *mem_root)
+  { return get_item_copy<Item_func_spatial_collection>(thd, mem_root, this); }
 };
 
 

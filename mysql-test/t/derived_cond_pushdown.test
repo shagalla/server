@@ -124,7 +124,17 @@ select * from v1,t2 where
 explain format=json
   select * from v1,t2 where
     ((v1.a<2) and (v1.max_c<200) and (t2.c>v1.max_c) and (v1.max_c=t2.d)) or
-      ((v1.a>4) and (v1.max_c<500) and (t2.b<v1.b) and (v1.max_c=t2.c));  
+      ((v1.a>4) and (v1.max_c<500) and (t2.b<v1.b) and (v1.max_c=t2.c));
+      
+select * from v1,t2 where (t2.a<2) and (t2.c>900);
+explain format=json 
+  select * from v1,t2 where (t2.a<2) and (t2.c>900);     
+      
+select * from v1,t2 where 
+  (t2.a<2) and (t2.c>900) and ((v1.a<t2.a) or (t2.a<11));
+explain format=json 
+  select * from v1,t2 where 
+    (t2.a<2) and (t2.c>900) and ((v1.a<t2.a) or (t2.a<11));      
       
 select * from v1,t2 where (v1.a=t2.a) and (v1.b=t2.b);
 explain format=json select * from v1,t2 where (v1.a=t2.a) and (v1.b=t2.b);
@@ -398,6 +408,109 @@ select * from v5,t2 where
 explain format=json 
   select * from v5,t2 where 
     ((v5.a=6) or (v5.a=8)) and (v5.c>200) and (v5.a=t2.a);
+    
+drop view v4,v5;
+
+create table t3(a int, b double, c double);
+insert into t3 values 
+  (1,23.4,14.3333), (1,12.5,18.9), (3,12.5,18.9),
+  (4,33.4,14.3333), (4,14.3333,13.65), (5,17.89,7.22),
+  (6,33.4,14.3), (10,33.4,13.65), (11,33.4,13.65);
   
-drop view v1,v2,v3,v4,v5;
+create table t4(a int, b double, c double);
+insert into t4 values 
+  (1,22.4,14.3333), (1,12.5,18.9), (2,22.4,18.9),
+  (4,33.4,14.3333), (5,22.4,13.65), (7,17.89,18.9),
+  (6,33.4,14.3333), (10,31.4,13.65), (12,33.4,13.65);  
+
+create view v4 as
+  select a, avg(a/4) as avg_a, b, c from t3
+    where (b>12.2) group by b,c having (avg_a<22.333);
+    
+select * from v4,t4 where
+  (v4.a=t4.a) and (v4.avg_a>0.45) and (v4.b>10);
+explain format=json
+  select * from v4,t4 where
+    (v4.a=t4.a) and (v4.avg_a>0.45) and (v4.b>10);
+    
+select * from v4,t4 where
+  (v4.b=v4.c) and (v4.c=t4.c) and ((t4.c>10) or (v4.a=1));    
+explain format=json
+  select * from v4,t4 where
+    (v4.b=v4.c) and (v4.c=t4.c) and ((t4.c>10) or (v4.a=1));
+    
+select * from v4,t4 where
+  (((v4.a>0.2) or (v4.b<17)) or (t4.c>17)) and (t4.c=v4.c) and (v4.c>18);
+explain format=json  
+  select * from v4,t4 where
+    (((v4.a>0.2) or (v4.b<17)) or (t4.c>17)) and (t4.c=v4.c) and (v4.c>18);  
+    
+drop table t3,t4;
+drop view v4;
+
+create table t3(a char, b char(8), c int);
+insert into t3 values
+  ('a','Ivan',1), ('b','Vika',2), ('b','Inga',6), ('c','Vika',7),
+  ('b','Ivan',7), ('a','Alex',6), ('b','Inga',5), ('d','Ron',9),
+  ('d','Harry',2), ('d','Hermione',3), ('c','Ivan',3), ('c','Harry',4); 
+  
+create table t4(a char, b char(8), c int);
+insert into t4 values
+  ('b','Ivan',1), ('c','Vinny',3), ('c','Inga',9), ('a','Vika',1),
+  ('c','Ivan',2), ('b','Ali',6), ('c','Inga',2), ('a','Ron',9),
+  ('d','Harry',1), ('b','Hermes',3), ('b','Ivan',11), ('b','Harry',4); 
+  
+create view v4 as 
+  select a, b, max(c) as max_c from t3 group by a,b having max_c < 9;
+  
+select * from v4,t4 where 
+  (v4.a=t4.a) and (v4.b='Vika') and (v4.max_c>2);  
+explain format=json
+  select * from v4,t4 where 
+    (v4.a=t4.a) and (v4.b='Vika') and (v4.max_c>2);
+        
+select * from v4,t4 where 
+  (v4.a=t4.a) and (t4.a='b') and ((v4.b='Vika') or (v4.b='Ali'));  
+explain format=json
+  select * from v4,t4 where 
+    (v4.a=t4.a) and (t4.a='b') and ((v4.b='Vika') or (v4.b='Ali'));
+    
+select * from v4,t4 where 
+  (v4.a='c') and (v4.b<'Hermes') and ((v4.b=t4.b) or (v4.max_c>20));  
+explain format=json
+  select * from v4,t4 where 
+    (v4.a='c') and (v4.b<'Hermes') and ((v4.b=t4.b) or (v4.max_c>20));  
+    
+drop table t3,t4;
+drop view v4;
+        
+create view v4 as
+  select a, b, min(max_c) as min_c from v1
+    where (v1.a<15) group by a,b;
+    
+select * from v4,v1 where
+  (v4.a<13) and (v1.a>5) and (v1.b>12);
+explain format=json
+  select * from v4,v1 where
+    (v4.a<13) and (v1.a>5) and (v1.b>12);
+    
+select * from v4,v1,t2 where
+  (v4.a=t2.a) and (v4.a=v1.a) and (v1.b>30);
+explain format=json
+  select * from v4,v1,t2 where
+    (v4.a=t2.a) and (v4.a=v1.a) and (v1.b>30);
+    
+select * from v4,v1,t2 where
+  (v4.a=t2.a) and (v4.a>1) and (v4.a=v1.a) and (v4.min_c>100) and (v1.b<30);    
+explain format=json
+  select * from v4,v1,t2 where
+    (v4.a=t2.a) and (v4.a>1) and (v4.a=v1.a) and (v4.min_c>100) and (v1.b<30);  
+
+select * from v4,v1 where
+  (((v4.b>10) and (v4.a>1)) or (v4.b<20)) and (v1.max_c>200); 
+explain format=json
+  select * from v4,v1,t2 where
+    (((v4.b>10) and (v4.a>1)) or (v4.b<20)) and (v1.max_c>200) and (v1.a=v4.a);        
+
+drop view v1,v2,v3,v4;
 drop table t1,t2;      

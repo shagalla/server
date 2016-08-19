@@ -325,6 +325,7 @@ public:
     return add_key_fields_optimize_op(join, key_fields, and_level,
                                       usable_tables, sargables, false);
   }
+  Item *build_clone(THD *thd, MEM_ROOT *mem_root) { return 0; }
 };
 
 

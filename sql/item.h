@@ -107,8 +107,9 @@ char_to_byte_length_safe(uint32 char_length_arg, uint32 mbmaxlen_arg)
 #define MY_COLL_ALLOW_CONV (MY_COLL_ALLOW_SUPERSET_CONV | MY_COLL_ALLOW_COERCIBLE_CONV)
 #define MY_COLL_CMP_CONV   (MY_COLL_ALLOW_CONV | MY_COLL_DISALLOW_NONE)
 
-#define FULL_EXTRACTION_FL (1 << 6)
-#define NO_EXTRACTION_FL (1 << 7)
+#define NO_EXTRACTION_FL              (1 << 6)
+#define FULL_EXTRACTION_FL            (1 << 7)
+#define EXTRACTION_MASK               (NO_EXTRACTION_FL | FULL_EXTRACTION_FL)
 
 class DTCollation {
 public:
@@ -1855,14 +1856,17 @@ public:
   
   bool depends_only_on(table_map view_map) 
   { return marker & FULL_EXTRACTION_FL; }
-  int get_dep_flags() 
-  { return  marker & 
-           (FULL_EXTRACTION_FL | NO_EXTRACTION_FL); }
-  void set_dep_flags(int flags) 
+  int get_extraction_flag()
+  { return  marker & EXTRACTION_MASK; }
+  void set_extraction_flag(int flags) 
   { 
-    marker &= ~ (FULL_EXTRACTION_FL | NO_EXTRACTION_FL);
+    marker &= ~EXTRACTION_MASK;
     marker|= flags; 
-  }   
+  }
+  void clear_extraction_flag()
+  {
+    marker &= ~EXTRACTION_MASK;
+  }
 };
 
 
@@ -4353,6 +4357,7 @@ public:
   }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_cache_wrapper>(thd, mem_root, this); }
+  Item *build_clone(THD *thd, MEM_ROOT *mem_root) { return 0; }
 };
 
 

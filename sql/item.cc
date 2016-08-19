@@ -6622,6 +6622,27 @@ Item *Item_field::update_value_transformer(THD *thd, uchar *select_arg)
 }
 
 
+/**
+  @brief
+    This method returns the copy of the field from the GROUP BY of the select
+    which is the same as the current field.
+    
+  @param thd    thread handle
+  @param arg    SELECT from which table map is taken      
+    
+  @details  
+    This method looks if current field has no equal fields and depends on
+    map. In this case this method creates new Item_ref with the name and context 
+    of the current field. If there are equal fields, the method looks through this
+    fields and check if some of this fields depend on map and their type is FIELD_ITEM.
+    If there is such a field, new Item_ref with the name and context 
+    of this field is created.
+  
+  @retval
+    new Item_ref if its building is successful
+    0 otherwise
+*/ 
+
 Item *Item_field::derived_field_transformer_for_having(THD *thd, uchar *arg)
 {
   st_select_lex *sl= (st_select_lex *)arg;
@@ -6661,6 +6682,29 @@ Item *Item_field::derived_field_transformer_for_having(THD *thd, uchar *arg)
   return this;
 }
 
+/**
+  @brief
+    This method returns the copy of the field from the GROUP BY of the select
+    which is the same as the current field.
+    
+  @param thd    thread handle
+  @param arg    SELECT from which table map and fields, which contain in GROUP BY
+                of this SELECT, are taken      
+    
+  @details  
+    This method looks if current field depends only on map and it's the 
+    same as some field which is used in the GROUP BY of the select.
+    It returns the result of the Item::build_clone of this field which is used
+    in GROUP BY. If there is no dependence on the map, it's looked if there
+    are any equal fields and some of this fields depend on map. For this equal field
+    it's looked if it's the same as the field which used in GROUP BY of the select,
+    and result of the Item::build_clone of this field from GROUP BY returns.
+  
+  @retval
+    Copy of the field from the GROUP BY of the select
+    which is the same as the current field.
+    Current field otherwise.
+*/ 
 
 Item *Item_field::derived_field_transformer_for_where(THD *thd, uchar *arg)
 {

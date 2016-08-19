@@ -2098,6 +2098,7 @@ public:
   }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_match>(thd, mem_root, this); }
+  Item *build_clone(THD *thd, MEM_ROOT *mem_root) { return 0; }
 private:
   /**
      Check whether storage engine for given table, 
@@ -2361,6 +2362,13 @@ public:
   }
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_sp>(thd, mem_root, this); }
+  Item *build_clone(THD *thd, MEM_ROOT *mem_root)
+  {
+    Item_func_sp *clone= (Item_func_sp *) Item_func::build_clone(thd, mem_root);
+    if (clone)
+      clone->sp_result_field= NULL;
+    return clone;
+  }
 };
 
 

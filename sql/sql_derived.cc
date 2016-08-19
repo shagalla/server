@@ -990,183 +990,23 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
 
 /**
   @brief
-    Set flag on condition if it depends only on table or not.
-    
-  @param cond   condition which is going to be look through    
+  Change field name as it could be as a part of the condition pushed into the
+  HAVING-part of the select that specifies the derived table
+
+  @param cond   The condition whose subformulas fields are to be changed   
+  @param thd    The thread handle
+  @param sl     The context that specifies the derived table and where changed condition cond will
+                be pushed
 
   @details
-     This method recursively looks through the condition and set
-     flags. NO_EXTRACTION_FL - if this condition doesn't depend on table.
-     FULL_EXTRACTION_FL - if it depends only on table and all its parts depend on table.
-     0 - otherwise. During this process exclusive_dependence_processor is. 
-     called.
-*/ 
+    This method recursively traverses the AND-OR condition cond and for each subformula of
+    the cond if it depends on derived table which select sl speciefies it changes its fields
+    names with the names of the fields of the tables which are used in the specification of 
+    the derived table.  
 
-void TABLE_LIST::check_pushable_cond_for_table(Item *cond)
-{
-  table_map tab_map= table->map;
-  cond->set_dep_flags(0);
-  if (cond->type() == Item::COND_ITEM)
-  {
-    bool and_cond= ((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC;
-    List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
-    uint count= 0;
-    Item *item;
-    while ((item=li++))
-    {
-      check_pushable_cond_for_table(item);
-      if (item->get_dep_flags() !=  NO_EXTRACTION_FL)
-        count++;
-      else if (!and_cond)
-        break;
-    }
-    if ((and_cond && count == 0) || item)
-    {
-      cond->set_dep_flags(NO_EXTRACTION_FL);
-      if (and_cond)
-        li.rewind();
-      while ((item= li++))
-        item->set_dep_flags(0);
-    }
-  }
-  else if (cond->walk(&Item::exclusive_dependence_processor,
-                      0, (uchar *) &tab_map))
-    cond->set_dep_flags(NO_EXTRACTION_FL);
-}
-
-
-/**
-  @brief
-    Extract condition which depends only on view
-    
-  @param thd    thread handle
-  @param cond   condition which is going to be look through    
-
-  @details
-     This method recursively looks through the condition and clone those
-     parts which depend only on view. If the flag of the condition (or its elements)
-     is NO_EXTRACTION_FL, that means nothing to extract. If some part
-     of the OR-condition has such a flag this OR-condition can't be extracted.
-     In the case if the condition type is multiply equality, cycle goes
-     through equal elements and if some of it depends on view that means that
-     starting condition depends on view.
-     
-
-   @retval
-     condition which depends only on view
-     0 if there is nothing to extract
-*/ 
-
-Item* TABLE_LIST::build_pushable_cond_for_table(THD *thd, Item *cond) 
-{
-  table_map tab_map= table->map;
-  bool is_multiple_equality= cond->type() == Item::FUNC_ITEM && 
-  ((Item_func*) cond)->functype() == Item_func::MULT_EQUAL_FUNC;
-  if (cond->get_dep_flags() == NO_EXTRACTION_FL)
-    return 0;
-  if (cond->type() == Item::COND_ITEM)
-  {
-    bool cond_and= false;
-    Item_cond *new_cond;
-    if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
-    {
-      cond_and= true;
-      new_cond=new (thd->mem_root) Item_cond_and(thd);
-    }
-    else
-      new_cond= new (thd->mem_root) Item_cond_or(thd);
-    if (!new_cond)
-      return 0;		
-    List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
-    Item *item;
-    while ((item=li++))
-    {
-      if (item->get_dep_flags() == NO_EXTRACTION_FL)
-      {
-	if (!cond_and)
-	  return 0;
-	continue;
-      }
-      Item *fix= build_pushable_cond_for_table(thd, item);
-      if (!fix && !cond_and)
-	return 0;
-      if (!fix) 
-	continue;
-      new_cond->argument_list()->push_back(fix, thd->mem_root);
-    }
-    switch (new_cond->argument_list()->elements) 
-    {
-    case 0:
-      return 0;			
-    case 1:
-      return new_cond->argument_list()->head();
-    default:
-      return new_cond;
-    }
-  }
-  else if (is_multiple_equality)
-  {
-    if (!(cond->used_tables() & tab_map))
-      return 0;
-    Item *new_cond= NULL;
-    int i= 0;
-    Item_equal *item_equal= (Item_equal *) cond;
-    Item *left_item = item_equal->get_const();
-    Item_equal_fields_iterator it(*item_equal);
-    Item *item;
-    if (!left_item)
-    {
-      while ((item=it++))
-      if (item->used_tables() == tab_map)
-      {
-        left_item= item;
-        break;
-      }
-    }
-    if (!left_item)
-      return 0;
-    while ((item=it++))
-    {
-      if (!(item->used_tables() == tab_map))
-	continue;
-      Item_func_eq *eq= 
-	new (thd->mem_root) Item_func_eq(thd, item, left_item);
-      if (eq)
-      {
-	i++;
-	switch (i)
-	{
-	case 1:
-	  new_cond= eq;
-	  break;
-	case 2:
-	  new_cond= new (thd->mem_root) Item_cond_and(thd, new_cond, eq);
-	  break;
-	default:
-	  ((Item_cond_and*)new_cond)->argument_list()->push_back(eq, thd->mem_root);
-	}
-      }
-    }
-    return new_cond;
-  }
-  else if (cond->get_dep_flags() != NO_EXTRACTION_FL)
-    return cond->build_clone(thd, thd->mem_root);
-  return 0;
-}
-
-
-/**
-  @brief
-    Transforming fields as it will be able to extract them 
-    into HAVING part of the condition
-  
-  @param cond   condition which is going to be look through    
-  @param thd    thread handle
-  @param sl     context where cond is used  
-
-  @details
-    This method looks through the condition and call 
-    derived_field_transformer_for_having
+  @retval
+    The condition that can be pushed into this select
+    NULL if there is no such a condition
 */
 
 void field_transformer_having(Item *cond, THD *thd, st_select_lex *sl)
@@ -1189,14 +1029,19 @@ void field_transformer_having(Item *cond, THD *thd, st_select_lex *sl)
 
 /**
   @brief
-    Delete those parts of the condition which have flag FULL_EXTRACTION_FL
+  Delete not needed sunformulas of the condition
     
-  @param thd    thread handle
-  @param cond   condition which is going to be look through    
+  @param thd    The thread handle
+  @param cond   The condition which subformulas are going to be deleted    
 
   @details
-     This method looks through the condition and delete those
-     parts which have flag FULL_EXTRACTION_FL  
+    For the given condition cond this method finds out what subformulas can be deleted and
+    remove them from the cond. It delete only those subformulas which have been already pushed
+    into the derived table.
+  @note
+    The method uses flags FULL_EXTRACTION_FL set by preliminary call of the method
+    check_cond_extraction_for_grouping_fields to figure out whether a subformula
+    can be pushed into the derived table and in this case deleted.  
 
    @retval
      condition without deleted parts
@@ -1205,9 +1050,9 @@ void field_transformer_having(Item *cond, THD *thd, st_select_lex *sl)
 
 Item *delete_not_needed_parts(THD *thd, Item *cond)
 {
-  if (cond->get_dep_flags() == FULL_EXTRACTION_FL)
+  if (cond->get_extraction_flag() == FULL_EXTRACTION_FL)
   {
-    cond->set_dep_flags(0);
+    cond->clear_extraction_flag();
     return 0; 
   }
   if (cond->type() == Item::COND_ITEM)
@@ -1218,9 +1063,9 @@ Item *delete_not_needed_parts(THD *thd, Item *cond)
       Item *item;
       while ((item= li++))
       {
-	if (item->get_dep_flags() == FULL_EXTRACTION_FL)
+	if (item->get_extraction_flag() == FULL_EXTRACTION_FL)
 	{
-	  item->set_dep_flags(0);
+	  item->clear_extraction_flag();
 	  li.remove();
 	}
       }
@@ -1236,163 +1081,6 @@ Item *delete_not_needed_parts(THD *thd, Item *cond)
     }
   }
   return cond;
-}
-
-
-/**
-  @brief
-    Finding fiels which are used in GROUP BY
-    
-  @param thd  thread handle
-
-  @details
-    This method looks through the fields and if the field
-    is used in GROUP BY, this field and item, which
-    produces this field, are saved.
-*/
-
-void st_select_lex::collect_grouping_fields(THD *thd) 
-{
-  List_iterator<Item> li(join->fields_list);
-  Item *item= li++;
-  for (uint i= 0; i < master_unit()->derived->table->s->fields; i++, (item=li++))
-  {
-    for (ORDER *ord= join->group_list; ord; ord= ord->next)
-    {
-      if ((*ord->item)->eq((Item*)item, 0))
-      {
-	Grouping_tmp_field *grouping_tmp_field= 
-	  new Grouping_tmp_field(master_unit()->derived->table->field[i], item);
-	grouping_tmp_fields.push_back(grouping_tmp_field);
-      }
-    }
-  }
-}
-
-
-/**
-  @brief
-    Set flag on condition if its fields are used in GROUP BY or not.
-    
-  @param cond   condition which is going to be look through    
-  @param thd    select for which this methos works
-
-  @details
-     This method recursively looks through the condition and set
-     flags. NO_EXTRACTION_FL - if all fields of this condition aren't
-     used in GROUP BY. FULL_EXTRACTION_FL - if all fields are used in GROUP BY.
-     0 - otherwise. During this process conditions_for_where_processor is. 
-     called.
-*/ 
-
-void check_cond_extraction_for_grouping_fields(Item *cond, st_select_lex *sl)
-{
-  cond->set_dep_flags(0);
-  if (cond->type() == Item::COND_ITEM)
-  {
-    bool and_cond= ((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC;
-    List<Item> *arg_list=  ((Item_cond*) cond)->argument_list();
-    List_iterator<Item> li(*arg_list);
-    uint count= 0;
-    uint count_full= 0;
-    Item *item;
-    while ((item=li++))
-    {
-      check_cond_extraction_for_grouping_fields(item, sl);
-      if (item->get_dep_flags() !=  NO_EXTRACTION_FL)
-      {
-        count++;
-        if (item->get_dep_flags() == FULL_EXTRACTION_FL)
-	  count_full++;
-      }
-      else if (!and_cond)
-        break;
-    }
-    if ((and_cond && count == 0) || item)
-      cond->set_dep_flags(NO_EXTRACTION_FL);
-    if (count_full == arg_list->elements)
-      cond->set_dep_flags(FULL_EXTRACTION_FL);
-    if (cond->get_dep_flags() != 0)
-    {
-      li.rewind();
-      while ((item=li++))
-        item->set_dep_flags(0);
-    }
-  }
-  else 
-    cond->set_dep_flags(cond->walk(&Item::conditions_for_where_processor, 
-				   0, (uchar *) sl) ?
-     NO_EXTRACTION_FL : FULL_EXTRACTION_FL);
-}
-
-
-/**
-  @brief
-    Extract condition which depends only on fields used in GROUP BY of the
-    entire condition
-    
-  @param thd    thread handle
-  @param cond   condition which is going to be look through    
-
-  @details
-     This method recursively looks through the condition and clone those
-     parts which depend only on fields which are used in GROUP BY of the entire
-     condition. If the flag of the condition (or its elements)
-     is NO_EXTRACTION_FL, that means nothing to extract. If some part
-     of the OR-condition has such a flag this OR-condition can't be extracted.    
-
-   @retval
-     condition which depends only on fields used in GROUP BY of the
-     entire condition
-     0 if there is nothing to extract
-*/ 
-
-static
-Item *extract_cond_for_grouping_fields(THD *thd, Item *cond)
-{
-  if (cond->get_dep_flags() == FULL_EXTRACTION_FL)
-    return cond->build_clone(thd, thd->mem_root);
-  else if (cond->type() == Item::COND_ITEM)
-  {
-    bool cond_and= false;
-    Item_cond *new_cond;
-    if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
-    {
-      cond_and= true;
-      new_cond=new (thd->mem_root) Item_cond_and(thd);
-    }
-    else
-      new_cond= new (thd->mem_root) Item_cond_or(thd);
-    if (!new_cond)
-      return 0;		
-    List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
-    Item *item;
-    while ((item=li++))
-    {
-      if (item->get_dep_flags() == NO_EXTRACTION_FL)
-      {
-	if (!cond_and)
-	  return 0;
-	continue;
-      }
-      Item *fix= extract_cond_for_grouping_fields(thd, item);
-      if (!fix && !cond_and)
-	return 0;
-      if (!fix) 
-	continue;
-      new_cond->argument_list()->push_back(fix, thd->mem_root);
-    }
-    switch (new_cond->argument_list()->elements) 
-    {
-    case 0:
-      return 0;			
-    case 1:
-      return new_cond->argument_list()->head();
-    default:
-      return new_cond;
-    }
-  }
-  return 0;
 }
 
 /**
@@ -1465,10 +1153,9 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   for (; sl; sl= sl->next_select())
   {
     sl->collect_grouping_fields(thd);
-    check_cond_extraction_for_grouping_fields(extract_cond, 
-					      sl);
+    sl->check_cond_extraction_for_grouping_fields(extract_cond);
     Item *extract_fields= 
-      extract_cond_for_grouping_fields(thd, extract_cond);
+      sl->extract_cond_for_grouping_fields(thd, extract_cond);
     if (!extract_fields)
       break;
     Item *extract_cond_cl_field= extract_fields;

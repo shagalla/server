@@ -125,6 +125,7 @@ public:
     comparators= 0;
   }
   friend class Item_func;
+  friend class Item_bool_rowready_func2;
 };
 
 
@@ -509,6 +510,17 @@ public:
     return add_key_fields_optimize_op(join, key_fields, and_level,
                                       usable_tables, sargables, false);
   }
+  Item *build_clone(THD *thd, MEM_ROOT *mem_root)
+  {
+    Item_bool_rowready_func2 *clone=
+      (Item_bool_rowready_func2 *) Item_func::build_clone(thd, mem_root);
+    if (clone)
+    {
+      clone->cmp.comparators= 0;
+    }
+    return clone;
+  }      
+
 };
 
 /**
@@ -1534,6 +1546,17 @@ public:
   Item* propagate_equal_fields(THD *thd, const Context &ctx, COND_EQUAL *cond);
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_case>(thd, mem_root, this); }
+  Item *build_clone(THD *thd, MEM_ROOT *mem_root)
+  {
+    Item_func_case *clone= (Item_func_case *) Item_func::build_clone(thd, mem_root);
+    if (clone)
+    {
+      clone->case_item= 0;
+      clone->arg_buffer= 0;
+      bzero(&clone->cmp_items, sizeof(cmp_items));
+    }
+    return clone;
+  } 
 };
 
 /*
@@ -1632,6 +1655,16 @@ public:
   bool count_sargable_conds(uchar *arg);
   Item *get_copy(THD *thd, MEM_ROOT *mem_root)
   { return get_item_copy<Item_func_in>(thd, mem_root, this); }
+  Item *build_clone(THD *thd, MEM_ROOT *mem_root)
+  {
+    Item_func_in *clone= (Item_func_in *) Item_func::build_clone(thd, mem_root);
+    if (clone)
+    {
+      clone->array= 0;
+      bzero(&clone->cmp_items, sizeof(cmp_items));
+    }
+    return clone;
+  }      
 };
 
 class cmp_item_row :public cmp_item

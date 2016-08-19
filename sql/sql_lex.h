@@ -1115,6 +1115,8 @@ public:
   }
   With_element *find_table_def_in_with_clauses(TABLE_LIST *table);
   void collect_grouping_fields(THD *thd); 
+  void check_cond_extraction_for_grouping_fields(Item *cond);
+  Item *extract_cond_for_grouping_fields(THD *thd, Item *cond);
 
   List<Window_spec> window_specs;
   void prepare_add_window_spec(THD *thd);

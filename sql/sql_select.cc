@@ -1122,7 +1122,9 @@ int JOIN::optimize()
 int
 JOIN::optimize_inner()
 {
-  if (conds) { Item *it_clone= conds->build_clone(thd,thd->mem_root); }
+/*
+    if (conds) { Item *it_clone= conds->build_clone(thd,thd->mem_root); }
+*/
   ulonglong select_opts_for_readinfo;
   uint no_jbuf_after;
   JOIN_TAB *tab;
@@ -1255,15 +1257,18 @@ JOIN::optimize_inner()
   conds= optimize_cond(this, conds, join_list, FALSE,
                        &cond_value, &cond_equal, OPT_LINK_EQUAL_FIELDS);
   
-  TABLE_LIST *tbl;
-  List_iterator_fast<TABLE_LIST> li(select_lex->leaf_tables);
-  while ((tbl= li++))
+  if (thd->lex->sql_command == SQLCOM_SELECT &&
+      optimizer_flag(thd, OPTIMIZER_SWITCH_COND_PUSHDOWN_FOR_DERIVED))
   {
-    if (tbl->is_materialized_derived())
+    TABLE_LIST *tbl;
+    List_iterator_fast<TABLE_LIST> li(select_lex->leaf_tables);
+    while ((tbl= li++))
     {
-      if (optimizer_flag(thd, OPTIMIZER_SWITCH_COND_PUSHDOWN_FOR_DERIVED))
+      if (tbl->is_materialized_derived())
       {
         if (pushdown_cond_for_derived(thd, &conds, tbl))
+	  DBUG_RETURN(1);
+	if (mysql_handle_single_derived(thd->lex, tbl, DT_OPTIMIZE))
 	  DBUG_RETURN(1);
       }
     }

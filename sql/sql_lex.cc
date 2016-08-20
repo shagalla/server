@@ -4912,24 +4912,29 @@ void st_select_lex::collect_grouping_fields(THD *thd)
 
 /**
   @brief
-  Mark subformulas of a condition whether they can be usable for the extraction into the WHERE part of the derived table
+   For a condition check possibility of exraction a formula over grouping fields 
   
-  @param cond  The condition whose subformulas are to be marked
+  @param cond  The condition whose subformulas are to be analyzed
   
   @details
-    This method recursively traverses the AND-OR condition cond and for each subformula
-    of the condition it checks whether it can be usable for the extraction of a condition
-    that can be pushed into the WHERE part of the derived table which is specidied in this
-    st_select_lex. The subformulas that are not usable are marked with the flag NO_EXTRACTION_FL.
-    The subformulas that can be wholly extracted into the derived table are marked with the flag FULL_EXTRACTION_FL.
+    This method traverses the AND-OR condition cond and for each subformula of
+    the condition it checks whether it can be usable for the extraction of a
+    condition over the grouping fields of this select. The method uses
+    the call-back parameter check_processor to ckeck whether a primary formula
+    depends only on grouping fields.
+    The subformulas that are not usable are marked with the flag NO_EXTRACTION_FL.
+    The subformulas that can be entierly extracted are marked with the flag 
+    FULL_EXTRACTION_FL.
   @note
     This method is called before any call of extract_cond_for_grouping_fields.
     The flag NO_EXTRACTION_FL set in a subformula allows to avoid building clone
-    for the subformula when extracting the pushable condition. The flag FULL_EXTRACTION_FL 
-    helps to delete all subformulas that have been already pushed.
+    for the subformula when extracting the pushable condition.
+    The flag FULL_EXTRACTION_FL allows to delete later all top level conjuncts
+     from cond.
 */ 
 
-void st_select_lex::check_cond_extraction_for_grouping_fields(Item *cond)
+void st_select_lex::check_cond_extraction_for_grouping_fields(Item *cond,
+                                              Item_processor check_processor)
 {
   cond->clear_extraction_flag();
   if (cond->type() == Item::COND_ITEM)
@@ -4937,17 +4942,17 @@ void st_select_lex::check_cond_extraction_for_grouping_fields(Item *cond)
     bool and_cond= ((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC;
     List<Item> *arg_list=  ((Item_cond*) cond)->argument_list();
     List_iterator<Item> li(*arg_list);
-    uint count= 0;
-    uint count_full= 0;
+    uint count= 0;         // to count items not containing NO_EXTRACTION_FL
+    uint count_full= 0;    // to count items with FULL_EXTRACTION_FL
     Item *item;
     while ((item=li++))
     {
-      check_cond_extraction_for_grouping_fields(item);
+      check_cond_extraction_for_grouping_fields(item, check_processor);
       if (item->get_extraction_flag() !=  NO_EXTRACTION_FL)
       {
         count++;
         if (item->get_extraction_flag() == FULL_EXTRACTION_FL)
-	  count_full++;
+          count_full++;
       }
       else if (!and_cond)
         break;
@@ -4964,7 +4969,7 @@ void st_select_lex::check_cond_extraction_for_grouping_fields(Item *cond)
     }
   }
   else 
-    cond->set_extraction_flag(cond->walk(&Item::conditions_for_where_processor, 
+    cond->set_extraction_flag(cond->walk(check_processor, 
 				   0, (uchar *) this) ?
      NO_EXTRACTION_FL : FULL_EXTRACTION_FL);
 }

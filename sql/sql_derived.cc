@@ -1153,7 +1153,8 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   for (; sl; sl= sl->next_select())
   {
     sl->collect_grouping_fields(thd);
-    sl->check_cond_extraction_for_grouping_fields(extract_cond);
+    sl->check_cond_extraction_for_grouping_fields(extract_cond,
+                           &Item::conditions_for_where_processor);
     Item *extract_fields= 
       sl->extract_cond_for_grouping_fields(thd, extract_cond);
     if (!extract_fields)

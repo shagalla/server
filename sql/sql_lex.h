@@ -1117,7 +1117,8 @@ public:
   void collect_grouping_fields(THD *thd); 
   void check_cond_extraction_for_grouping_fields(Item *cond,
                                                  Item_processor processor);
-  Item *extract_cond_for_grouping_fields(THD *thd, Item *cond);
+  Item *extract_cond_for_grouping_fields(THD *thd, Item *cond,
+					 bool no_to_clones);
 
   List<Window_spec> window_specs;
   void prepare_add_window_spec(THD *thd);

@@ -1136,7 +1136,7 @@ void field_transformer_where(Item *cond, THD *thd, st_select_lex *sl)
     true    if an error is reported 
     false   otherwise
 */
-
+#if 0
 bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
 {
   if (!*cond)
@@ -1198,3 +1198,114 @@ bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
   }
   return false;
 }
+#else
+bool pushdown_cond_for_derived(THD *thd, Item *cond, TABLE_LIST *derived)
+{
+  if (!cond)
+    return false;
+  /*
+    Build the most restrictive condition extractable from 'cond'
+    that can be pushed into the derived table 'derived'.
+    All subexpressions of this condition are cloned from the
+    subexpressions of 'cond'.
+    This condition has to be fixed yet.
+  */
+  Item *extracted_cond;
+  derived->check_pushable_cond_for_table(cond);
+  extracted_cond= derived->build_pushable_cond_for_table(thd, cond);
+  if (!extracted_cond)
+  {
+    /* Nothing can be pushed into the derived table */
+    return false;
+  }
+  /* Push extracted_cond into every select of the unit specifying 'derived' */
+  st_select_lex_unit *unit= derived->get_unit();
+  st_select_lex *save_curr_select= thd->lex->current_select;
+  st_select_lex *sl= unit->first_select();
+  for (; sl; sl= sl->next_select())
+  {
+    thd->lex->current_select= sl;
+    /*
+      For each select of the unit except the last one
+      create a clone of extracted_cond
+    */
+    Item *extracted_cond_copy= !sl->next_select() ? extracted_cond :
+                               extracted_cond->build_clone(thd, thd->mem_root);
+    if (!extracted_cond_copy)
+      continue;
+  
+    /*
+      Figure out what can be extracted from the pushed condition
+      that could be pushed into the where clause of sl
+    */
+    Item *cond_over_grouping_fields;
+    sl->collect_grouping_fields(thd);
+    sl->check_cond_extraction_for_grouping_fields(extracted_cond_copy,
+                                 &Item::conditions_for_where_processor);
+    cond_over_grouping_fields=
+      sl->extract_cond_for_grouping_fields(thd, extracted_cond_copy, true);
+  
+    /*
+      Transform the references to the 'derived' columns from the condition
+      pushed into the where clause of sl to make them usable in the new context
+    */
+    if (cond_over_grouping_fields)
+      cond_over_grouping_fields= cond_over_grouping_fields->transform(thd,
+                                 &Item::derived_field_transformer_for_where,
+                                 (uchar*) sl);
+     
+    if (cond_over_grouping_fields)
+    {
+      /*
+        In extracted_cond_copy remove top conjuncts that
+        has been pushed into the where clause of sl
+      */
+      extracted_cond_copy= delete_not_needed_parts(thd, extracted_cond_copy);
+  
+      /*
+        Create the conjunction of the existing where condition of sl
+        and the pushed condition, take it as the new where condition of sl
+        and fix this new condition
+      */
+      cond_over_grouping_fields->walk(&Item::cleanup_processor, 0, 0);
+      thd->change_item_tree(&sl->join->conds,
+                          and_conds(thd, sl->join->conds,
+                                    cond_over_grouping_fields));
+    
+      if (sl->join->conds->fix_fields(thd, &sl->join->conds))
+        goto err;
+    
+      if (!extracted_cond_copy)
+        continue;
+    }
+ 
+    /*
+      Transform the references to the 'derived' columns from the condition
+      pushed into the having clause of sl to make them usable in the new context
+    */
+    extracted_cond_copy= extracted_cond_copy->transform(thd,
+                         &Item::derived_field_transformer_for_having,
+                         (uchar*) sl);
+    if (!extracted_cond_copy)
+      continue;
+    /*
+      Create the conjunction of the existing having condition of sl
+      and the pushed condition, take it as the new having condition of sl
+      and fix this new condition
+    */
+    extracted_cond_copy->walk(&Item::cleanup_processor, 0, 0);
+    thd->change_item_tree(&sl->join->having,
+    and_conds(thd, sl->join->having,
+    extracted_cond_copy));
+    sl->having_fix_field= 1;
+    if (sl->join->having->fix_fields(thd, &sl->join->having))
+      return true;
+    sl->having_fix_field= 0;
+  }
+  thd->lex->current_select= save_curr_select;
+  return false;
+err:
+  thd->lex->current_select= save_curr_select;
+  return true;
+}
+#endif

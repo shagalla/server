@@ -1266,17 +1266,13 @@ JOIN::optimize_inner()
     {
       if (tbl->is_materialized_derived())
       {
-        if (pushdown_cond_for_derived(thd, &conds, tbl))
+        if (pushdown_cond_for_derived(thd, conds, tbl))
 	  DBUG_RETURN(1);
 	if (mysql_handle_single_derived(thd->lex, tbl, DT_OPTIMIZE))
 	  DBUG_RETURN(1);
       }
     }
   }
-  
-  /* Run optimize phase for all derived tables/views used in this SELECT. */
-  if (select_lex->handle_derived(thd->lex, DT_OPTIMIZE))
-    DBUG_RETURN(1);
      
   if (thd->is_error())
   {

@@ -6622,27 +6622,6 @@ Item *Item_field::update_value_transformer(THD *thd, uchar *select_arg)
 }
 
 
-/**
-  @brief
-    This method returns the copy of the field from the GROUP BY of the select
-    which is the same as the current field.
-    
-  @param thd    thread handle
-  @param arg    SELECT from which table map is taken      
-    
-  @details  
-    This method looks if current field has no equal fields and depends on
-    map. In this case this method creates new Item_ref with the name and context 
-    of the current field. If there are equal fields, the method looks through this
-    fields and check if some of this fields depend on map and their type is FIELD_ITEM.
-    If there is such a field, new Item_ref with the name and context 
-    of this field is created.
-  
-  @retval
-    new Item_ref if its building is successful
-    0 otherwise
-*/ 
-
 Item *Item_field::derived_field_transformer_for_having(THD *thd, uchar *arg)
 {
   st_select_lex *sl= (st_select_lex *)arg;
@@ -6682,29 +6661,6 @@ Item *Item_field::derived_field_transformer_for_having(THD *thd, uchar *arg)
   return this;
 }
 
-/**
-  @brief
-    This method returns the copy of the field from the GROUP BY of the select
-    which is the same as the current field.
-    
-  @param thd    thread handle
-  @param arg    SELECT from which table map and fields, which contain in GROUP BY
-                of this SELECT, are taken      
-    
-  @details  
-    This method looks if current field depends only on map and it's the 
-    same as some field which is used in the GROUP BY of the select.
-    It returns the result of the Item::build_clone of this field which is used
-    in GROUP BY. If there is no dependence on the map, it's looked if there
-    are any equal fields and some of this fields depend on map. For this equal field
-    it's looked if it's the same as the field which used in GROUP BY of the select,
-    and result of the Item::build_clone of this field from GROUP BY returns.
-  
-  @retval
-    Copy of the field from the GROUP BY of the select
-    which is the same as the current field.
-    Current field otherwise.
-*/ 
 
 Item *Item_field::derived_field_transformer_for_where(THD *thd, uchar *arg)
 {
@@ -9916,50 +9872,14 @@ const char *dbug_print_item(Item *item)
 
 #endif /*DBUG_OFF*/
 
-
-/**
-  @brief
-    This method looks if current field depends only on map or if there
-    are any equal fields and some of this fields depend on map.
-    
-  @param
-    table map   
-  
-  @retval
-    true    if there is no dependence on map 
-    false   otherwise 
-*/ 
-
-bool Item_field::exclusive_dependence_processor(uchar *map)
+bool Item_field::exclusive_dependence_on_table_processor(uchar *map)
 {
-  table_map view_map= *((table_map *) map);
-  return !((used_tables() == view_map || 
-         (item_equal && item_equal->used_tables() & view_map))); 
+  table_map tab_map= *((table_map *) map);
+  return !((used_tables() == tab_map || 
+         (item_equal && item_equal->used_tables() & tab_map))); 
 }
 
-
-/**
-  @brief
-    This method looks if current field contains in GROUP BY of 
-    the SELECT or not
-    
-  @param 
-    SELECT from which table map and fields, which contain in GROUP BY
-    of this SELECT, are taken   
-              
-  @details
-    This method looks through the fields which contain in GROUP BY
-    of the arg and if the current field is equal to one of this fields
-    false returns. Else if there are any equal with the current field fields 
-    it is looked if any of this equal fields are the same as the fields
-    used in GROUP BY. All of this fields must depend only on table map.
-  
-  @retval
-    true    if current field doesn't contain in GROUP BY of the SELECT
-    false   otherwise 
-*/ 
-
-bool Item_field::conditions_for_where_processor(uchar *arg)
+bool Item_field::exclusive_dependence_on_grouping_fields_processor(uchar *arg)
 {
   st_select_lex *sl= (st_select_lex *)arg;
   List_iterator<Grouping_tmp_field> li(sl->grouping_tmp_fields);

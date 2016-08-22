@@ -1053,9 +1053,9 @@ bool pushdown_cond_for_derived(THD *thd, Item *cond, TABLE_LIST *derived)
     Item *cond_over_grouping_fields;
     sl->collect_grouping_fields(thd);
     sl->check_cond_extraction_for_grouping_fields(extracted_cond_copy,
-                                 &Item::conditions_for_where_processor);
+              &Item::exclusive_dependence_on_grouping_fields_processor);
     cond_over_grouping_fields=
-      sl->extract_cond_for_grouping_fields(thd, extracted_cond_copy, true);
+      sl->build_cond_for_grouping_fields(thd, extracted_cond_copy, true);
   
     /*
       Transform the references to the 'derived' columns from the condition

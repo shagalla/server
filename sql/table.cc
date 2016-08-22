@@ -7491,7 +7491,7 @@ void TABLE_LIST::check_pushable_cond_for_table(Item *cond)
         item->clear_extraction_flag();
     }
   }
-  else if (cond->walk(&Item::exclusive_dependence_processor,
+  else if (cond->walk(&Item::exclusive_dependence_on_table_processor,
                       0, (uchar *) &tab_map))
     cond->set_extraction_flag(NO_EXTRACTION_FL);
 }
@@ -7505,19 +7505,22 @@ void TABLE_LIST::check_pushable_cond_for_table(Item *cond)
   @param cond  The condition from which the pushable one is to be extracted
   
   @details
-    For the given condition cond this method finds out what condition depended only
-    on this table can be extracted from cond. If such condition C exists the method
-    builds the item for it.
-  @note
-    The method uses flags NO_EXTRACTION_FL set by preliminary call of the method
-    TABLE_LIST::check_pushable_cond_for_table to figure out whether a subformula
-    depends only on this table or not.
+    For the given condition cond this method finds out what condition depended
+    only  on this table can be extracted from cond. If such condition C exists
+    the method builds the item for it.
+    The method uses the flag NO_EXTRACTION_FL set by the preliminary call of
+    the method TABLE_LIST::check_pushable_cond_for_table to figure out whether
+    a subformula depends only on this table or not.
   @note
     The built condition C is always implied by the condition cond
     (cond => C). The method tries to build the most restictive such
     condition (i.e. for any other condition C' such that cond => C'
     we have C => C').
-  @retval
+   @note
+    The build item is not ready for usage: substitution for the field items
+    has to be done and it has to be re-fixed.
+ 
+ @retval
     the built condition pushable into this table if such a condition exists
     NULL if there is no such a condition
 */ 

@@ -4930,7 +4930,7 @@ void st_select_lex::collect_grouping_fields(THD *thd)
     The flag NO_EXTRACTION_FL set in a subformula allows to avoid building clone
     for the subformula when extracting the pushable condition.
     The flag FULL_EXTRACTION_FL allows to delete later all top level conjuncts
-     from cond.
+    from cond.
 */ 
 
 void st_select_lex::check_cond_extraction_for_grouping_fields(Item *cond,
@@ -4977,31 +4977,37 @@ void st_select_lex::check_cond_extraction_for_grouping_fields(Item *cond,
 
 /**
   @brief
-  Build condition extractable from the given one
+  Build condition extractable from the given one depended on grouping fields
  
-  @param thd   The thread handle
-  @param cond  The condition from which the pushable one is to be extracted
-  
+  @param thd           The thread handle
+  @param cond          The condition from which the condition depended 
+                       on grouping fields is to be extracted
+  @param no_top_clones If it's true then no clones for the top fully 
+                       extractable conjuncts are built
+
   @details
-    For the given condition cond this method finds out what condition depended only
-    on this table can be extracted from cond. If such condition C exists the method
-    builds the item for it.
-  @note
-    The method uses flags NO_EXTRACTION_FL set by preliminary call of the method
-    TABLE_LIST::check_pushable_cond_for_table to figure out whether a subformula
-    depends only on this table or not.
+    For the given condition cond this method finds out what condition depended
+    only on the grouping fields can be extracted from cond. If such condition C
+    exists the method builds the item for it.
+    This method uses the flags NO_EXTRACTION_FL and FULL_EXTRACTION_FL set by the
+    preliminary call of st_select_lex::check_cond_extraction_for_grouping_fields
+    to figure out whether a subformula depends only on these fields or not.
   @note
     The built condition C is always implied by the condition cond
     (cond => C). The method tries to build the most restictive such
     condition (i.e. for any other condition C' such that cond => C'
     we have C => C').
+  @note
+    The build item is not ready for usage: substitution for the field items
+    has to be done and it has to be re-fixed.
+  
   @retval
-    the built condition pushable into this table if such a condition exists
+    the built condition depended only on grouping fields if such a condition exists
     NULL if there is no such a condition
 */ 
 
-Item *st_select_lex::extract_cond_for_grouping_fields(THD *thd, Item *cond,
-						      bool no_top_clones)
+Item *st_select_lex::build_cond_for_grouping_fields(THD *thd, Item *cond,
+						    bool no_top_clones)
 {
   if (cond->get_extraction_flag() == FULL_EXTRACTION_FL)
   {
@@ -5033,8 +5039,8 @@ Item *st_select_lex::extract_cond_for_grouping_fields(THD *thd, Item *cond,
 	item->clear_extraction_flag();
 	continue;
       }
-      Item *fix= extract_cond_for_grouping_fields(thd, item,
-						  no_top_clones & cond_and);
+      Item *fix= build_cond_for_grouping_fields(thd, item,
+						no_top_clones & cond_and);
       if (!fix)
       {
 	if (cond_and)

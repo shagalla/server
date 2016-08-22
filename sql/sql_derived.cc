@@ -990,215 +990,27 @@ bool mysql_derived_reinit(THD *thd, LEX *lex, TABLE_LIST *derived)
 
 /**
   @brief
-  Change field name as it could be as a part of the condition pushed into the
-  HAVING-part of the select that specifies the derived table
-
-  @param cond   The condition whose subformulas fields are to be changed   
-  @param thd    The thread handle
-  @param sl     The context that specifies the derived table and where changed condition cond will
-                be pushed
+  Extract the condition depended on derived table/view and pushed it there 
+   
+  @param thd       The thread handle
+  @param cond      The condition from which to extract the pushed condition 
+  @param derived   The reference to the derived table/view
 
   @details
-    This method recursively traverses the AND-OR condition cond and for each subformula of
-    the cond if it depends on derived table which select sl speciefies it changes its fields
-    names with the names of the fields of the tables which are used in the specification of 
-    the derived table.  
-
-  @retval
-    The condition that can be pushed into this select
-    NULL if there is no such a condition
-*/
-
-void field_transformer_having(Item *cond, THD *thd, st_select_lex *sl)
-{
-  if (cond->type() == Item::COND_ITEM)
-  {
-    List_iterator_fast<Item> li(*((Item_cond*) cond)->argument_list());
-    Item *item;
-    while ((item= li++))
-    {
-      item->transform(thd, &Item::derived_field_transformer_for_having,
-                      (uchar*) sl);
-    }
-  }
-  else
-   cond->transform(thd, &Item::derived_field_transformer_for_having,
-                   (uchar*) sl); 
-}
-
-
-/**
-  @brief
-  Delete not needed sunformulas of the condition
-    
-  @param thd    The thread handle
-  @param cond   The condition which subformulas are going to be deleted    
-
-  @details
-    For the given condition cond this method finds out what subformulas can be deleted and
-    remove them from the cond. It delete only those subformulas which have been already pushed
-    into the derived table.
-  @note
-    The method uses flags FULL_EXTRACTION_FL set by preliminary call of the method
-    check_cond_extraction_for_grouping_fields to figure out whether a subformula
-    can be pushed into the derived table and in this case deleted.  
-
-   @retval
-     condition without deleted parts
-     0 if there is nothing to delete
-*/ 
-
-Item *delete_not_needed_parts(THD *thd, Item *cond)
-{
-  if (cond->get_extraction_flag() == FULL_EXTRACTION_FL)
-  {
-    cond->clear_extraction_flag();
-    return 0; 
-  }
-  if (cond->type() == Item::COND_ITEM)
-  {
-    if (((Item_cond*) cond)->functype() == Item_func::COND_AND_FUNC)
-    {
-      List_iterator<Item> li(*((Item_cond*) cond)->argument_list());
-      Item *item;
-      while ((item= li++))
-      {
-	if (item->get_extraction_flag() == FULL_EXTRACTION_FL)
-	{
-	  item->clear_extraction_flag();
-	  li.remove();
-	}
-      }
-      switch (((Item_cond*) cond)->argument_list()->elements) 
-      {
-      case 0:
-	return 0;			
-      case 1:
-	return ((Item_cond*) cond)->argument_list()->head();
-      default:
-	return cond;
-      }
-    }
-  }
-  return cond;
-}
-
-/**
-  @brief
-    Transforming fields as it will be able to extract them 
-    into WHERE part of the condition
+   This functiom builds the most restrictive condition depending only on
+   the derived table/view that can be extracted from the condition cond. 
+   The built condition is pushed into the having clauses of the
+   selects contained in the query specifying the derived table/view.
+   The function also checks for each select whether any condition depending
+   only on grouping fields can be extracted from the pushed condition.
+   If so, it pushes the condition over grouping fields into the where
+   clause of the select.
   
-  @param cond   condition which is going to be look through    
-  @param thd    thread handle
-  @param sl     context where cond is used  
-
-  @details
-    This method looks through the condition and call 
-    derived_field_transformer_for_where
-*/
-
-void field_transformer_where(Item *cond, THD *thd, st_select_lex *sl)
-{
-  if (cond->type() == Item::COND_ITEM)
-  {
-    List_iterator_fast<Item> li(*((Item_cond*) cond)->argument_list());
-    Item *item;
-    while ((item= li++))
-    {
-      item->transform(thd, &Item::derived_field_transformer_for_where,
-                      (uchar*) sl);
-    }
-  }
-  else
-    cond->transform(thd, &Item::derived_field_transformer_for_where,
-                   (uchar*) sl);
-}
-
-
-/**
-  @brief
-    Pushing down conditions, which depends only on view, into view
-    
-  @param thd       thread handle
-  @param cond      condition which is going to be look through
-  @param derived   reference to the derived table.
-
- @details
-    The method performs the following actions:
-
-    1. Extracting parts of the condition which depends only on view
-    2. Pushing down parts of the condition into the WHERE-clause of the view.
-       This parts must depend only on grouping fields.
-    3. Pushing down the rest parts of the condition which depends only on view
-       into the HAVING-clause of the view.
-
   @retval
     true    if an error is reported 
     false   otherwise
 */
-#if 0
-bool pushdown_cond_for_derived(THD *thd, Item **cond, TABLE_LIST *derived)
-{
-  if (!*cond)
-    return false;
-  derived->check_pushable_cond_for_table(*cond);
-  Item *extract_cond;
-  /** Building AND OR structure, consisting condition 
-      which is going to be pushed down*/
-  extract_cond= derived->build_pushable_cond_for_table(thd, *cond);
-  if (!extract_cond)
-    return false;
-  st_select_lex_unit *unit= derived->get_unit();
-  st_select_lex *sl= unit->first_select();
-  for (; sl; sl= sl->next_select())
-  {
-    sl->collect_grouping_fields(thd);
-    sl->check_cond_extraction_for_grouping_fields(extract_cond,
-                           &Item::conditions_for_where_processor);
-    Item *extract_fields= 
-      sl->extract_cond_for_grouping_fields(thd, extract_cond);
-    if (!extract_fields)
-      break;
-    Item *extract_cond_cl_field= extract_fields;
-    if (sl->next_select())
-      extract_cond_cl_field= extract_fields->build_clone(thd, thd->mem_root);
-    field_transformer_where(extract_cond_cl_field, thd, sl);
-    extract_cond_cl_field->walk(&Item::cleanup_processor, 0, 0);
-    thd->change_item_tree(&sl->join->conds, 
-			  and_conds(thd, sl->join->conds, 
-				    extract_cond_cl_field));
-    st_select_lex *save_curr_select= thd->lex->current_select;
-    thd->lex->current_select= sl;
-    if (sl->join->conds->fix_fields(thd, &sl->join->conds))
-      return true;
-    thd->lex->current_select= save_curr_select;
-  }
-  thd->change_item_tree(&extract_cond, 
-			delete_not_needed_parts(thd, extract_cond));
-  if (!extract_cond)
-    return false;
-  sl= unit->first_select();
-  for (; sl; sl= sl->next_select())
-  {
-    Item *extract_cond_cl= extract_cond;
-    if (sl->next_select())
-      thd->change_item_tree(&extract_cond_cl,
-			    extract_cond->build_clone(thd, thd->mem_root));
-    field_transformer_having(extract_cond_cl, thd, sl);
-    extract_cond_cl->walk(&Item::cleanup_processor, 0, 0);
-    thd->change_item_tree(&sl->join->having,
-			  and_conds(thd, sl->join->having, extract_cond_cl));
-    st_select_lex *save_curr_select= thd->lex->current_select;
-    thd->lex->current_select= sl;
-    sl->having_fix_field= 1;
-    if (sl->join->having->fix_fields(thd, &sl->join->having))
-      return true;
-    sl->having_fix_field= 0;
-    thd->lex->current_select= save_curr_select;
-  }
-  return false;
-}
-#else
+
 bool pushdown_cond_for_derived(THD *thd, Item *cond, TABLE_LIST *derived)
 {
   if (!cond)
@@ -1260,7 +1072,7 @@ bool pushdown_cond_for_derived(THD *thd, Item *cond, TABLE_LIST *derived)
         In extracted_cond_copy remove top conjuncts that
         has been pushed into the where clause of sl
       */
-      extracted_cond_copy= delete_not_needed_parts(thd, extracted_cond_copy);
+      extracted_cond_copy= remove_pushed_top_conjuncts(thd, extracted_cond_copy);
   
       /*
         Create the conjunction of the existing where condition of sl
@@ -1308,4 +1120,3 @@ err:
   thd->lex->current_select= save_curr_select;
   return true;
 }
-#endif
